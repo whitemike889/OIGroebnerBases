@@ -30,7 +30,7 @@ load "Exports.m2"
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-load "PolynomialOIAlgebras.m2"
+load "PolynomialOIAlgebras.m2" -- Also loads OI.m2
 
 load "FreeOIModules.m2"
 
