@@ -11,7 +11,7 @@ getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
     if n < m or (m < 0 or n < 0) then return {};
 
-    ret := new MutableList from {};
+    ret := new MutableList;
     sets := subsets(set(toList(1..n)), m);
     for s in sets do (
         ret = append(ret, sort(toList(s)))

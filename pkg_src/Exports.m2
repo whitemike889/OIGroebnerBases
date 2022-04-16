@@ -5,14 +5,14 @@ export {
     -- From PolynomialOIAlgebras.m2
     "PolynomialOIAlgebra",
     "polynomialOIAlgebra",
-    "validatePolynomialOIAlgebra",
-    "validateWidth",
-    "getVariablesInWidth",
     "getAlgebraInWidth",
     "getAlgebraMapsBetweenWidths",
 
+    --"validatePolynomialOIAlgebra",
+    --"validateWidth",
+    --"linearizeVars",
+
     -- From FreeOIModules.m2
     "FreeOIModule",
-    "freeOIModule",
-    "validateFreeOIModule"
+    "freeOIModule"
 }
