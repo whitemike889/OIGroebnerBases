@@ -26,19 +26,24 @@ export {
     -- From OI.m2
     "getOIMaps",
 
+    -- "validateWidth",
+
     -- From PolynomialOIAlgebras.m2
     "PolynomialOIAlgebra",
     "polynomialOIAlgebra",
     "getAlgebraInWidth",
     "getAlgebraMapsBetweenWidths",
-
-    --"validatePolynomialOIAlgebra",
-    --"validateWidth",
-    --"linearizeVars",
+    
+    -- "validatePolynomialOIAlgebra",
+    -- "linearizeVars",
 
     -- From FreeOIModules.m2
     "FreeOIModule",
-    "freeOIModule"
+    "freeOIModule",
+    "getFreeModuleInWidth"
+    -- "getModuleMapsBetweenWidths",
+
+    -- "validateFreeOIModule"
 }
 
 --------------------------------------------------------------------------------
@@ -51,22 +56,32 @@ export {
 -- FROM: OI.m2 -----------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+-- PURPOSE: Check if a given width is valid
+-- INPUT: An integer 'n'
+-- OUTPUT: Nothing if n is a valid width, otherwise error
+-- COMMENT: Unexported
+validateWidth = method()
+validateWidth ZZ := n -> (
+    if n < 0 then error("Expected nonnegative width, not "|toString(n))
+)
+
 -- PURPOSE: Get all OI-maps between two widths
 -- INPUT: '(m, n)', a width 'm' and a width 'n' with m ≤ n
 -- OUTPUT: A list of OI-maps from m to n
--- COMMENT: Returns an empty list if n < m or either m or n are negative
+-- COMMENT: Returns an empty list if n < m
 -- COMMENT: We represent an OI-map from m to n as a length m list with strictly increasing entries in [n]
 getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
-    if n < m or (m < 0 or n < 0) then return {};
+    validateWidth m; validateWidth n;
+    if n < m then return {};
 
-    ret := new MutableList;
+    ret := new List;
     sets := subsets(set(toList(1..n)), m);
     for s in sets do (
         ret = append(ret, sort(toList(s)))
     );
 
-    toList(ret)
+    ret
 )
 
 --------------------------------------------------------------------------------
@@ -75,10 +90,11 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
 
 -- Define the new type PolynomialOIAlgebra
 PolynomialOIAlgebra = new Type of HashTable
+toString PolynomialOIAlgebra := P -> "baseField: "|toString(P#"baseField")|", varRows: "|toString(P#"varRows")|", genWidth: "|toString(P#"genWidth")|", varSym: "|toString(P#"varSym");
 net PolynomialOIAlgebra := P -> (
     "Base field: "|net(P#"baseField") ||
     "Number of variable rows: "|net(P#"varRows") ||
-    "Generated in width: "|net(P#"genWidth") ||
+    "Generator width: "|net(P#"genWidth") ||
     "Variable symbol: "|net(P#"varSym")
 )
 
@@ -93,15 +109,6 @@ validatePolynomialOIAlgebra PolynomialOIAlgebra := P -> (
     if not instance(P#"varRows", ZZ) or P#"varRows" < 1 then error("Expected a positive integer row count, not "|toString(P#"varRows"));
     if not instance(P#"genWidth", ZZ) or not (P#"genWidth" == 0 or P#"genWidth" == 1) then error("Expected generator width of either 0 or 1, not "|toString(P#"genWidth"));
     if not instance(P#"varSym", Symbol) then error("Expected variable symbol, not "|toString(P#"varSym"))
-)
-
--- PURPOSE: Check if a given width is valid
--- INPUT: An integer 'n'
--- OUTPUT: Nothing if n is a valid width, otherwise error
--- COMMENT: Unexported
-validateWidth = method()
-validateWidth ZZ := n -> (
-    if n < 0 then error("Expected nonnegative width, not "|toString(n))
 )
 
 -- PURPOSE: Make a new PolynomialOIAlgebra
@@ -182,20 +189,20 @@ getAlgebraMapsBetweenWidths(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) ->
     local ret;
     if P#"genWidth" == 0 or m == 0 then ret = {map(targ, src)}
     else (
-        algMaps := new MutableList;
+        algMaps := new List;
         oiMaps := getOIMaps(m, n);
 
         -- Generate algebra maps
         for oiMap in oiMaps do (
-            subs := new MutableList;
+            subs := new List;
 
             for j from 1 to m do
                 for i from 1 to P#"varRows" do subs = append(subs, src_(linearizeVars(P, m, i, j)) => targ_(linearizeVars(P, n, i, oiMap#(j - 1))));
 
-            algMaps = append(algMaps, map(targ, src, toList(subs)))
+            algMaps = append(algMaps, map(targ, src, subs))
         );
 
-        ret = toList(algMaps)
+        ret = algMaps
     );
 
     -- Store the maps
@@ -209,7 +216,76 @@ getAlgebraMapsBetweenWidths(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) ->
 --------------------------------------------------------------------------------
 
 -- Define the new type FreeOIModule
+-- COMMENT: The lengths of genWidths and degShifts need to be the same
 FreeOIModule = new Type of HashTable
+net FreeOIModule := F -> (
+    "Polynomial OI-Algebra: "|net(toString(F#"alg")) ||
+    "Basis symbol: "|net(toString(F#"basisSym")) ||
+    "Generator widths: "|net(toString(F#"genWidths")) ||
+    "Degree shifts: "|net(toString(F#"degShifts"))
+)
+
+-- PURPOSE: Check if a given FreeOIModule object is valid
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: Nothing if F is a valid FreeOIModule object, otherwise error
+-- COMMENT: Unexported
+validateFreeOIModule = method()
+validateFreeOIModule FreeOIModule := F -> (
+    if not sort keys F == sort {"alg", "basisSym", "genWidths", "degShifts", "modules", "maps"} or not (instance(F#"modules", MutableHashTable) and instance(F#"maps", MutableHashTable)) then error "Invalid FreeOIModule HashTable keys";
+    
+    if not instance(F#"alg", PolynomialOIAlgebra) then error("Expected PolynomialOIAlgebra, not "|toString(F#"alg"));
+    validatePolynomialOIAlgebra(F#"alg");
+
+    if not instance(F#"basisSym", Symbol) then error("Expected basis symbol, not "|toString(F#"basisSym"));
+
+    if not instance(F#"genWidths", List) then error("Expected type 'List' for genWidths, not "|toString(class(F#"genWidths")));
+    for l in F#"genWidths" do if not instance(l, ZZ) then error("Expected a list of integers for genWidths, not "|toString(F#"genWidths"));
+
+    if not instance(F#"degShifts", List) then error("Expected type 'List' for degShifts, not "|toString(class(F#"degShifts")));
+    for l in F#"degShifts" do if not instance(l, ZZ) then error("Expected a list of integers for degShifts, not "|toString(F#"degShifts"));
+
+    if not #(F#"genWidths") == #(F#"degShifts") then error "Length of genWidths must equal length of degShifts";
+)
+
+-- PURPOSE: Make a new FreeOIModule
+-- INPUT: '(P, e, W)', a PolynomialOIAlgebra 'P', a basis symbol 'e' and a list of generator widths 'W'
+-- OUTPUT: A FreeOIModule made from P, e, W
+-- COMMENT: Default degree shifts are all zero
+freeOIModule = method(TypicalValue => FreeOIModule, Options => {"shifts" => 0})
+freeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
+    shifts := new MutableList;
+    if opts#"shifts" === 0 then for i to #W - 1 do shifts#i = 0
+    else if instance(opts#"shifts", List) then for i to #(opts#"shifts") - 1 do shifts#i = (opts#"shifts")#i
+    else error("Invalid shifts option: "|toString(opts#"shifts"));
+
+    ret := new FreeOIModule from {"alg" => P, "basisSym" => e, "genWidths" => W, "degShifts" => toList(shifts), "modules" => new MutableHashTable, "maps" => new MutableHashTable};
+    validateFreeOIModule ret;
+
+    ret
+)
+
+-- PURPOSE: Get the free module from a FreeOIModule in a specified width
+-- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
+-- OUTPUT: The free module F_n
+-- COMMENT: "store => false" will not store the module in memory (useful for large computations)
+getFreeModuleInWidth = method(TypicalValue => Module, Options => {"store" => true})
+getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
+    validateFreeOIModule F; validateWidth n;
+    if not instance(opts#"store", Boolean) then error("Expected \"store\" => true or \"store\" => false, not \"store\" => "|toString(opts#"store"));
+
+    -- Return the module if it already exists
+    if (F#"modules")#?n then return (F#"modules")#n;
+
+    -- Generate the module
+    degList := new List;
+    for i to #(F#"genWidths") - 1 do degList = append(degList, binomial(n, (F#"genWidths")#i) : (F#"degShifts")#i);
+    ret := (getAlgebraInWidth(F#"alg", n, "store" => opts#"store"))^degList;
+
+    -- Store the module
+    if opts#"store" then (F#"modules")#n = ret;
+
+    ret
+)
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------

@@ -6,10 +6,11 @@ load "OI.m2"
 
 -- Define the new type PolynomialOIAlgebra
 PolynomialOIAlgebra = new Type of HashTable
+toString PolynomialOIAlgebra := P -> "baseField: "|toString(P#"baseField")|", varRows: "|toString(P#"varRows")|", genWidth: "|toString(P#"genWidth")|", varSym: "|toString(P#"varSym");
 net PolynomialOIAlgebra := P -> (
     "Base field: "|net(P#"baseField") ||
     "Number of variable rows: "|net(P#"varRows") ||
-    "Generated in width: "|net(P#"genWidth") ||
+    "Generator width: "|net(P#"genWidth") ||
     "Variable symbol: "|net(P#"varSym")
 )
 
@@ -24,15 +25,6 @@ validatePolynomialOIAlgebra PolynomialOIAlgebra := P -> (
     if not instance(P#"varRows", ZZ) or P#"varRows" < 1 then error("Expected a positive integer row count, not "|toString(P#"varRows"));
     if not instance(P#"genWidth", ZZ) or not (P#"genWidth" == 0 or P#"genWidth" == 1) then error("Expected generator width of either 0 or 1, not "|toString(P#"genWidth"));
     if not instance(P#"varSym", Symbol) then error("Expected variable symbol, not "|toString(P#"varSym"))
-)
-
--- PURPOSE: Check if a given width is valid
--- INPUT: An integer 'n'
--- OUTPUT: Nothing if n is a valid width, otherwise error
--- COMMENT: Unexported
-validateWidth = method()
-validateWidth ZZ := n -> (
-    if n < 0 then error("Expected nonnegative width, not "|toString(n))
 )
 
 -- PURPOSE: Make a new PolynomialOIAlgebra
@@ -113,20 +105,20 @@ getAlgebraMapsBetweenWidths(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) ->
     local ret;
     if P#"genWidth" == 0 or m == 0 then ret = {map(targ, src)}
     else (
-        algMaps := new MutableList;
+        algMaps := new List;
         oiMaps := getOIMaps(m, n);
 
         -- Generate algebra maps
         for oiMap in oiMaps do (
-            subs := new MutableList;
+            subs := new List;
 
             for j from 1 to m do
                 for i from 1 to P#"varRows" do subs = append(subs, src_(linearizeVars(P, m, i, j)) => targ_(linearizeVars(P, n, i, oiMap#(j - 1))));
 
-            algMaps = append(algMaps, map(targ, src, toList(subs)))
+            algMaps = append(algMaps, map(targ, src, subs))
         );
 
-        ret = toList(algMaps)
+        ret = algMaps
     );
 
     -- Store the maps
