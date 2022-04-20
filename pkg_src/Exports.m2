@@ -1,23 +1,21 @@
 export {
     -- From OI.m2
+    "OIMap",
     "getOIMaps",
-
-    -- "validateWidth",
+    "validateOIMap",
+    "validateWidth",
 
     -- From PolynomialOIAlgebras.m2
     "PolynomialOIAlgebra",
     "polynomialOIAlgebra",
     "getAlgebraInWidth",
     "getAlgebraMapsBetweenWidths",
-    
-    -- "validatePolynomialOIAlgebra",
-    -- "linearizeVars",
+    "validatePolynomialOIAlgebra",
+    "linearFromRowCol",
 
     -- From FreeOIModules.m2
     "FreeOIModule",
     "freeOIModule",
-    "getFreeModuleInWidth"
-    -- "getModuleMapsBetweenWidths",
-
-    -- "validateFreeOIModule"
+    "getFreeModuleInWidth",
+    "validateFreeOIModule"
 }
