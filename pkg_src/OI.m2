@@ -2,53 +2,55 @@
 -- FROM: OI.m2 -----------------------------------------------------------------
 --------------------------------------------------------------------------------
 
--- Define the new type OIMap
-OIMap = new Type of List;
+-- PURPOSE: Check if a given integer is nonnegative
+-- INPUT: An integer 'n'
+-- OUTPUT: Nothing if 0 ≤ n, otherwise error
+assertNonNeg = method()
+assertNonNeg ZZ := n -> if n < 0 then error("Expected a nonnegative integer, instead got "|toString(n))
+
+-- PURPOSE: Define the new type OIMap
+-- COMMENT: Should be of the form '{n, {...}}' where n is the target width and {...} is a (possibly empty) list of strictly increasing positive integers between 1 and n
+OIMap = new Type of List
 
 -- PURPOSE: Check if a given OIMap is valid
--- INPUT: An OIMap 'oiMap'
--- OUTPUT: Nothing if oiMap is a valid OIMap, otherwise error
-validateOIMap = method()
-validateOIMap OIMap := oiMap -> (
-    if #oiMap == 0 then return;
+-- INPUT: An OIMap 'f'
+-- OUTPUT: Nothing if f is a valid OI-map, otherwise error
+assertValid OIMap := f -> (
+    if not #f == 2 or not instance(f#0, ZZ) or not instance(f#1, List) then error("Expected a list of the form {n, {...}} where n is a nonnegative integer and {...} is a (possibly empty) list of strictly increasing positive integers between 1 and n, instead got "|toString(f));
+    assertNonNeg f#0;
 
     bad := false;
-    for i to #oiMap - 1 do (
-        if not instance(oiMap#i, ZZ) or oiMap#i < 1 then (bad = true; break);
-        if not i == 0 then if oiMap#i <= oiMap#(i - 1) then (bad = true; break);
+    for i to #(f#1) - 1 do (
+        if not instance((f#1)#i, ZZ) or (f#1)#i < 1 or (f#1)#i > f#0 then (bad = true; break); -- Check that the entries are between 1 and f#0
+        if not i == 0 then if (f#1)#i <= (f#1)#(i - 1) then (bad = true; break) -- Check that the entries are strictly increasing
     );
 
-    if bad then error("Expected strictly increasing list of positive integers, not "|toString(oiMap));
+    if bad then error("Expected a list of strictly increasing positive integers between 1 and "|toString(f#0)|", not "|toString(f#1))
 )
 
--- Install comparison method for OIMaps (lex order)
-OIMap ? OIMap := (m1, m2) -> (
-    validateOIMap m1; validateOIMap m2;
-    if not #m1 == #m2 then return symbol incomparable;
-    if m1 === m2 then return symbol ==;
-    
-    for i to #m1 - 1 do if not m1#i == m2#i then return m1#i ? m2#i;
+-- PURPOSE: Make a new OIMap
+-- INPUT: '(n, L)', a width 'n' and a list 'L'
+-- OUTPUT: An OIMap made from n and L
+oiMap = method(TypicalValue => OIMap)
+oiMap(ZZ, List) := (n, L) -> (
+    f := new OIMap from {n, L};
+    assertValid f;
+    f
 )
-
--- PURPOSE: Check if a given width is valid
--- INPUT: An integer 'n'
--- OUTPUT: Nothing if n is a valid width, otherwise error
-validateWidth = method()
-validateWidth ZZ := n -> if n < 0 then error("Expected nonnegative width, not "|toString(n));
 
 -- PURPOSE: Get all OI-maps between two widths
 -- INPUT: '(m, n)', a width 'm' and a width 'n'
--- OUTPUT: A list of OI-maps from m to n
--- COMMENT: Returns an empty list if n < m
+-- OUTPUT: A list of the OI-maps from m to n
+-- COMMENT: Returns the empty list if n < m
 getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
-    validateWidth m; validateWidth n;
+    scan({m, n}, assertNonNeg);
     if n < m then return {};
 
     -- Generate OI-maps
     ret := new List;
     sets := subsets(set(toList(1..n)), m);
-    for s in sets do ret = append(ret, new OIMap from sort(toList(s)));
+    for s in sets do ret = append(ret, oiMap(n, sort(toList(s))));
 
     ret
 )

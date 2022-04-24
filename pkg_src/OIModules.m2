@@ -7,7 +7,7 @@
 newPackage("OIModules",
     Headline => "Computation in OI-modules over Noetherian OI-algebras",
     Version => "0.1",
-    Date => "April 4, 2022",
+    Date => "April 4, 2022", -- Project birthday
     Keywords => {"Commutative Algebra"},
     Authors => {
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
@@ -29,6 +29,8 @@ load "Exports.m2"
 -- BODY ------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
+
+assertValid = method() -- For data validation
 
 load "PolynomialOIAlgebras.m2" -- Also loads OI.m2
 
