@@ -32,9 +32,9 @@ load "Exports.m2"
 
 assertValid = method() -- For data validation
 
-load "PolynomialOIAlgebras.m2" -- Also loads OI.m2
+load "PolynomialOIAlgebra.m2"   -- Also loads OI.m2
 
-load "FreeOIModules.m2"
+load "FreeOIModule.m2"          -- Also loads SchreyerMonomialOrder.m2
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------

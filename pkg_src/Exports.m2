@@ -1,29 +1,76 @@
 export {
-    -- From OI.m2
+    ------------------------------------
+    -- From OI.m2 ----------------------
+    ------------------------------------
+
+    -- Types
     "OIMap",
+
+    -- Methods
     "oiMap",
     "getOIMaps",
 
-    -- From PolynomialOIAlgebras.m2
+    ------------------------------------
+    -- From PolynomialOIAlgebra.m2 -----
+    ------------------------------------
+    
+    -- Types
     "PolynomialOIAlgebra",
+
+    -- Methods
     "polynomialOIAlgebra",
     "getAlgebraInWidth",
     "getAlgebraMapsBetweenWidths",
+
+    -- Options
     "Store",
-    "maps",
+
+    -- Keys
     "varRows",
     "varSym",
     "algebras",
     "baseField",
+    "maps",
 
-    -- From FreeOIModules.m2
+    ------------------------------------
+    -- From SchreyerMonomialOrder.m2 ---
+    ------------------------------------
+
+    -- Types
+    "SchreyerMonomialOrder",
+
+    -- Methods
+    "schreyerMonomialOrder",
+    "installSchreyerMonomialOrder",
+
+    -- Keys
+    "srcMod",
+    "targMod",
+    "schreyerList",
+
+    ------------------------------------
+    -- From FreeOIModule.m2 ------------
+    ------------------------------------
+
+    -- Types
     "FreeOIModule",
+
+    -- Methods
     "freeOIModule",
     "getFreeModuleInWidth",
-    "alg",
+    "freeOIModuleFromElement",
+    "widthOfElement",
+
+    -- Options
+    "DegreeShifts",
+
+    -- Keys
+    "Width",
+    "parentModule",
+    "oiAlgebra",
     "basisSym",
     "genWidths",
     "degShifts",
-    "modules",
-    "Shifts"
+    "monOrder",
+    "modules"
 }
