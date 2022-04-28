@@ -7,9 +7,7 @@ SchreyerMonomialOrder = new Type of HashTable
 
 -- Install net method for SchreyerMonomialOrder
 
--- PURPOSE: Check if a given SchreyerMonomialOrder is valid
--- INPUT: A SchreyerMonomialOrder 'S'
--- OUTPUT: Nothing if S is a valid SchreyerMonomialOrder, otherwise error
+-- Validation method for SchreyerMonomialOrder
 assertValid SchreyerMonomialOrder := S -> (
     if not sort keys S === sort {srcMod, targMod, schreyerList} then error("Invalid SchreyerMonomialOrder HashTable keys: "|toString keys S);
     if not instance(S.srcMod, FreeOIModule) or not instance(S.targMod, FreeOIModule) then error("Expected type FreeOIModule for srcMod and targMod, instead got types "|toString class S.srcMod|" and "|toString class S.targMod);
@@ -19,10 +17,13 @@ assertValid SchreyerMonomialOrder := S -> (
     if not instance(S.schreyerList, List) or #S.schreyerList == 0 then error("Expected nonempty List for schreyerList, instead got "|toString S.schreyerList);
     for i to #S.schreyerList - 1 do (
         elt := S.schreyerList#i;
+        if not instance(elt, Vector) then error("Expected a Vector, instead got "|toString elt);
+
         wid := widthOfElement elt;
         par := freeOIModuleFromElement elt;
+
         if not class elt === getFreeModuleInWidth(par, wid) then error("Element "|toString i|" of schreyerList does not belong to its specified parent OI-module in width "|toString wid);
-        if not wid == (S.srcMod).genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString wid|" which does not match srcMod.genWidths#i = "|toString (S.srcMod).genWidths#i)
+        if not wid == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString wid|" which does not match srcMod.genWidths#i = "|toString S.srcMod.genWidths#i)
     )
 )
 
@@ -46,13 +47,13 @@ schreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := (targModArg, srcModAr
 installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder SchreyerMonomialOrder := S -> (
     assertValid S;
-    (S.srcMod).monOrder#0 = S
+    S.srcMod.monOrder#0 = S
 )
 
 -- Shortcut version
 installSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := (targModArg, srcModArg, schreyerListArg) -> (
     S := schreyerMonomialOrder(targModArg, srcModArg, schreyerListArg);
-    (S.srcMod).monOrder#0 = S
+    S.srcMod.monOrder#0 = S
 )
 
 --------------------------------------------------------------------------------

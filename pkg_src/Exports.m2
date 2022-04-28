@@ -49,6 +49,18 @@ export {
     "schreyerList",
 
     ------------------------------------
+    -- From OIMonomial.m2 ----------------
+    ------------------------------------
+
+    -- Types
+    "BasisIndex",
+    "OIMonomial",
+
+    -- Methods
+    "basisIndex",
+    "oiMonomial",
+
+    ------------------------------------
     -- From FreeOIModule.m2 ------------
     ------------------------------------
 
@@ -63,6 +75,7 @@ export {
 
     -- Options
     "DegreeShifts",
+    "UpdateBasis",
 
     -- Keys
     "Width",

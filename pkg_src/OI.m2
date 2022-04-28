@@ -11,9 +11,7 @@ assertValid ZZ := n -> if n < 0 then error("Expected a nonnegative integer, inst
 -- COMMENT: Should be of the form '{n, {...}}' where n is the target width and {...} is a (possibly empty) list of strictly increasing positive integers between 1 and n
 OIMap = new Type of List
 
--- PURPOSE: Check if a given OIMap is valid
--- INPUT: An OIMap 'f'
--- OUTPUT: Nothing if f is a valid OI-map, otherwise error
+-- Validation method for OIMap
 assertValid OIMap := f -> (
     if not #f == 2 or not instance(f#0, ZZ) or not instance(f#1, List) then error("Expected a list of the form {n, {...}} where n is a nonnegative integer and {...} is a (possibly empty) list of strictly increasing positive integers between 1 and n, instead got "|toString f);
     assertValid f#0;

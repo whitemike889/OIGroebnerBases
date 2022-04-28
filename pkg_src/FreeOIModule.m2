@@ -15,9 +15,7 @@ net FreeOIModule := F -> "Polynomial OI-algebra: "|net toString F.oiAlgebra ||
 
 load "SchreyerMonomialOrder.m2" -- Must be loaded after FreeOIModule is declared
 
--- PURPOSE: Check if a given FreeOIModule object is valid
--- INPUT: A FreeOIModule 'F'
--- OUTPUT: Nothing if F is a valid FreeOIModule object, otherwise error
+-- Validation method for FreeOIModule
 assertValid FreeOIModule := F -> (
     if not sort keys F === sort {oiAlgebra, basisSym, genWidths, degShifts, monOrder, modules, maps} then error("Invalid FreeOIModule HashTable keys: "|toString keys F);
     if not instance(F.oiAlgebra, PolynomialOIAlgebra) then error("Expected PolynomialOIAlgebra, instead got "|toString F.oiAlgebra);
@@ -52,20 +50,31 @@ freeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     else if instance(opts.DegreeShifts, List) then shifts = opts.DegreeShifts
     else error("Invalid DegreeShifts option: "|toString opts.DegreeShifts);
 
-    ret := new FreeOIModule from {oiAlgebra => P, basisSym => e, genWidths => W, degShifts => toList shifts, monOrder => new MutableList from {Lex}, modules => new MutableHashTable, maps => new MutableHashTable};
+    ret := new FreeOIModule from {
+        oiAlgebra => P,
+        basisSym => e,
+        genWidths => W,
+        degShifts => toList shifts,
+        monOrder => new MutableList from {Lex},
+        modules => new MutableHashTable,
+        maps => new MutableHashTable};
     assertValid ret;
 
     ret
 )
 
+load "OIMonomial.m2"
+
 -- PURPOSE: Get the free module from a FreeOIModule in a specified width
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
 -- OUTPUT: F_n, the free module in width n
 -- COMMENT: "Store => false" will not store the module in memory (useful for large computations)
-getFreeModuleInWidth = method(TypicalValue => Module, Options => {Store => true})
+-- COMMENT: "UpdateBasis => false" will not modify the basis elements
+getFreeModuleInWidth = method(TypicalValue => Module, Options => {Store => true, UpdateBasis => true})
 getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
     scan({F, n}, assertValid);
     if not instance(opts.Store, Boolean) then error("Expected boolean value for Store option, instead got "|toString opts.Store);
+    if not instance(opts.UpdateBasis, Boolean) then error("Expected boolean value for UpdateBasis option, instead got "|toString opts.UpdateBasis);
 
     -- Return the module if it already exists
     if (F.modules)#?n then return (F.modules)#n;
@@ -87,7 +96,7 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
     ret
 )
 
--- PURPOSE: Subscript version of getFreeModuleInWidth
+-- Subscript version of getFreeModuleInWidth
 FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
 
 -- PURPOSE: Get the width of an element

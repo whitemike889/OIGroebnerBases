@@ -15,9 +15,7 @@ net PolynomialOIAlgebra := P -> "Base field: "|net P.baseField ||
     "Number of variable rows: "|net P.varRows ||
     "Variable symbol: "|net P.varSym
 
--- PURPOSE: Check if a given PolynomialOIAlgebra object is valid
--- INPUT: A PolynomialOIAlgebra 'P'
--- OUTPUT: Nothing if P is a valid PolynomialOIAlgebra object, otherwise error
+-- Validation method for PolynomialOIAlgebra
 assertValid PolynomialOIAlgebra := P -> (
     if not sort keys P == sort {baseField, varRows, varSym, algebras, maps} then error("Invalid PolynomialOIAlgebra HashTable keys: "|toString keys P);
     if not instance(P.baseField, Ring) or not isField P.baseField then error("Expected a field, instead got "|toString P.baseField);
@@ -32,7 +30,12 @@ assertValid PolynomialOIAlgebra := P -> (
 -- OUTPUT: A PolynomialOIAlgebra made from K, c, x
 polynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra)
 polynomialOIAlgebra(Ring, ZZ, Symbol) := (K, c, x) -> (
-    P := new PolynomialOIAlgebra from {baseField => K, varRows => c, varSym => x, algebras => new MutableHashTable, maps => new MutableHashTable};
+    P := new PolynomialOIAlgebra from {
+        baseField => K,
+        varRows => c, 
+        varSym => x, 
+        algebras => new MutableHashTable, 
+        maps => new MutableHashTable};
     assertValid P;
     P
 )
