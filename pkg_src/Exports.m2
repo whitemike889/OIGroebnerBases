@@ -1,14 +1,28 @@
 export {
     ------------------------------------
-    -- From OI.m2 ----------------------
+    -- From OIModules.m2 ---------------
+    ------------------------------------
+
+    -- Methods
+    "assertValid",
+
+    -- Options
+    "AssertValid",
+
+    ------------------------------------
+    -- From OIMap.m2 -------------------
     ------------------------------------
 
     -- Types
     "OIMap",
 
     -- Methods
-    "oiMap",
+    "makeOIMap",
     "getOIMaps",
+
+    -- Keys
+    "Width",
+    "assignment",
 
     ------------------------------------
     -- From PolynomialOIAlgebra.m2 -----
@@ -18,8 +32,9 @@ export {
     "PolynomialOIAlgebra",
 
     -- Methods
-    "polynomialOIAlgebra",
+    "makePolynomialOIAlgebra",
     "getAlgebraInWidth",
+    "linearFromRowCol",
     "getAlgebraMapsBetweenWidths",
 
     -- Options
@@ -40,7 +55,7 @@ export {
     "SchreyerMonomialOrder",
 
     -- Methods
-    "schreyerMonomialOrder",
+    "makeSchreyerMonomialOrder",
     "installSchreyerMonomialOrder",
 
     -- Keys
@@ -49,16 +64,28 @@ export {
     "schreyerList",
 
     ------------------------------------
-    -- From OIMonomial.m2 ----------------
+    -- From TermsAndMonomials.m2 -------
     ------------------------------------
 
     -- Types
     "BasisIndex",
+    "OITerm",
     "OIMonomial",
+    "OIBasisElement",
 
     -- Methods
+    "makeBasisIndex",
+    "makeOITerm",
+    "makeOIMonomial",
+    "makeOIBasisElement",
+    "getOIBasisElementsInWidth",
+
+    -- Keys
+    "freeOIMod",
+    "idx",
+    "oiMap",
+    "ringElement",
     "basisIndex",
-    "oiMonomial",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
@@ -68,7 +95,7 @@ export {
     "FreeOIModule",
 
     -- Methods
-    "freeOIModule",
+    "makeFreeOIModule",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
@@ -78,9 +105,7 @@ export {
     "UpdateBasis",
 
     -- Keys
-    "Width",
-    "parentModule",
-    "oiAlgebra",
+    "polyOIAlg",
     "basisSym",
     "genWidths",
     "degShifts",

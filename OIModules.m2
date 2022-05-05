@@ -2,7 +2,8 @@
 
 -- PURPOSE: Algorithms for computing Gröbner bases, syzygies and free resolutions for submodules of free OI-modules over Noetherian polynomial OI-algebras
 -- PROGRAMMER: Michael Morrow (https://michaelmorrow.org)
--- LAST UPDATED: April 2022
+-- LAST UPDATED: May 2022
+-- COMMENT: This package was made using Macualay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
 newPackage("OIModules",
     Headline => "Computation in OI-modules over Noetherian OI-algebras",
@@ -13,8 +14,7 @@ newPackage("OIModules",
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
     DebuggingMode => true,
-    HomePage => "https://github.com/morrowmh/OIModules",
-    Configuration => { "assertValid" => true } -- Using "false" will speed up computation but is less safe
+    HomePage => "https://github.com/morrowmh/OIModules"
 )
 
 --------------------------------------------------------------------------------
@@ -25,15 +25,29 @@ newPackage("OIModules",
 
 export {
     ------------------------------------
-    -- From OI.m2 ----------------------
+    -- From OIModules.m2 ---------------
+    ------------------------------------
+
+    -- Methods
+    "assertValid",
+
+    -- Options
+    "AssertValid",
+
+    ------------------------------------
+    -- From OIMap.m2 -------------------
     ------------------------------------
 
     -- Types
     "OIMap",
 
     -- Methods
-    "oiMap",
+    "makeOIMap",
     "getOIMaps",
+
+    -- Keys
+    "Width",
+    "assignment",
 
     ------------------------------------
     -- From PolynomialOIAlgebra.m2 -----
@@ -43,8 +57,9 @@ export {
     "PolynomialOIAlgebra",
 
     -- Methods
-    "polynomialOIAlgebra",
+    "makePolynomialOIAlgebra",
     "getAlgebraInWidth",
+    "linearFromRowCol",
     "getAlgebraMapsBetweenWidths",
 
     -- Options
@@ -65,7 +80,7 @@ export {
     "SchreyerMonomialOrder",
 
     -- Methods
-    "schreyerMonomialOrder",
+    "makeSchreyerMonomialOrder",
     "installSchreyerMonomialOrder",
 
     -- Keys
@@ -74,16 +89,28 @@ export {
     "schreyerList",
 
     ------------------------------------
-    -- From OIMonomial.m2 ----------------
+    -- From TermsAndMonomials.m2 -------
     ------------------------------------
 
     -- Types
     "BasisIndex",
+    "OITerm",
     "OIMonomial",
+    "OIBasisElement",
 
     -- Methods
+    "makeBasisIndex",
+    "makeOITerm",
+    "makeOIMonomial",
+    "makeOIBasisElement",
+    "getOIBasisElementsInWidth",
+
+    -- Keys
+    "freeOIMod",
+    "idx",
+    "oiMap",
+    "ringElement",
     "basisIndex",
-    "oiMonomial",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
@@ -93,7 +120,7 @@ export {
     "FreeOIModule",
 
     -- Methods
-    "freeOIModule",
+    "makeFreeOIModule",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
@@ -103,9 +130,7 @@ export {
     "UpdateBasis",
 
     -- Keys
-    "Width",
-    "parentModule",
-    "oiAlgebra",
+    "polyOIAlg",
     "basisSym",
     "genWidths",
     "degShifts",
@@ -122,7 +147,7 @@ export {
 assertValid = method() -- For data validation
 
 --------------------------------------------------------------------------------
--- BEGIN: OI.m2 ----------------------------------------------------------------
+-- BEGIN: OIMap.m2 -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 -- PURPOSE: Check if a given integer is nonnegative
@@ -131,30 +156,38 @@ assertValid = method() -- For data validation
 assertValid ZZ := n -> if n < 0 then error("Expected a nonnegative integer, instead got "|toString n)
 
 -- PURPOSE: Define the new type OIMap
--- COMMENT: Should be of the form '{n, {...}}' where n is the target width and {...} is a (possibly empty) list of strictly increasing positive integers between 1 and n
-OIMap = new Type of List
+-- COMMENT: Should be of the form {Width => ZZ, assignment => List}
+OIMap = new Type of HashTable
+
+-- Install toString method for OIMap
+toString OIMap := f -> toString new List from {f.Width, f.assignment}
+
+-- Install net method for OIMap
+net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
 
 -- Validation method for OIMap
 assertValid OIMap := f -> (
-    if not #f == 2 or not instance(f#0, ZZ) or not instance(f#1, List) then error("Expected a list of the form {n, {...}} where n is a nonnegative integer and {...} is a (possibly empty) list of strictly increasing positive integers between 1 and n, instead got "|toString f);
-    assertValid f#0;
+    if not sort keys f === sort {Width, assignment} then error("Expected keys {Width, assignment}, instead got "|toString keys f);
+    if not instance(f.Width, ZZ) then error("Expected type ZZ for Width, instead got type "|toString class f.Width); 
+    assertValid f.Width;
 
     bad := false;
-    for i to #(f#1) - 1 do (
-        if not instance((f#1)#i, ZZ) or (f#1)#i < 1 or (f#1)#i > f#0 then (bad = true; break); -- Check that the entries are between 1 and f#0
-        if not i == 0 then if (f#1)#i <= (f#1)#(i - 1) then (bad = true; break) -- Check that the entries are strictly increasing
+    for i to #f.assignment - 1 do (
+        entry := f.assignment#i;
+        if not instance(entry, ZZ) or entry < 1 or entry > f.Width then ( bad = true; break ); -- Check that the entries are between 1 and f.Width
+        if not i == 0 then if entry <= f.assignment#(i - 1) then ( bad = true; break ) -- Check that the entries are strictly increasing
     );
 
-    if bad then error("Expected a list of strictly increasing positive integers between 1 and "|toString f#0|", not "|toString f#1)
+    if bad then error("Expected a list of strictly increasing positive integers between 1 and "|toString f.Width|", instead got "|toString f.assignment)
 )
 
 -- PURPOSE: Make a new OIMap
 -- INPUT: '(n, L)', a width 'n' and a list 'L'
 -- OUTPUT: An OIMap made from n and L
-oiMap = method(TypicalValue => OIMap)
-oiMap(ZZ, List) := (n, L) -> (
-    f := new OIMap from {n, L};
-    assertValid f;
+makeOIMap = method(TypicalValue => OIMap, Options => {AssertValid => true})
+makeOIMap(ZZ, List) := opts -> (n, L) -> (
+    f := new OIMap from {Width => n, assignment => L};
+    if opts.AssertValid then assertValid f;
     f
 )
 
@@ -162,21 +195,21 @@ oiMap(ZZ, List) := (n, L) -> (
 -- INPUT: '(m, n)', a width 'm' and a width 'n'
 -- OUTPUT: A list of the OI-maps from m to n
 -- COMMENT: Returns the empty list if n < m
-getOIMaps = method(TypicalValue => List)
-getOIMaps(ZZ, ZZ) := (m, n) -> (
-    scan({m, n}, assertValid);
+getOIMaps = method(TypicalValue => List, Options => {AssertValid => true})
+getOIMaps(ZZ, ZZ) := opts -> (m, n) -> (
+    if opts.AssertValid then scan({m, n}, assertValid);
     if n < m then return {};
 
     -- Generate OI-maps
     ret := new List;
     sets := subsets(set toList(1..n), m);
-    for s in sets do ret = append(ret, oiMap(n, sort toList s));
+    for s in sets do ret = append(ret, makeOIMap(n, sort toList s));
 
     ret
 )
 
 --------------------------------------------------------------------------------
--- END: OI.m2 ------------------------------------------------------------------
+-- END: OIMap.m2 ---------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -184,6 +217,7 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
 --------------------------------------------------------------------------------
 
 -- Define the new type PolynomialOIAlgebra
+-- COMMENT: Should be of the form {baseField => Ring, varRows => ZZ, varSym => Symbol, algebras => MutableHashTable, maps => MutableHashTable}
 PolynomialOIAlgebra = new Type of HashTable
 
 -- Install toString method for PolynomialOIAlgebra
@@ -196,26 +230,26 @@ net PolynomialOIAlgebra := P -> "Base field: "|net P.baseField ||
 
 -- Validation method for PolynomialOIAlgebra
 assertValid PolynomialOIAlgebra := P -> (
-    if not sort keys P == sort {baseField, varRows, varSym, algebras, maps} then error("Invalid PolynomialOIAlgebra HashTable keys: "|toString keys P);
-    if not instance(P.baseField, Ring) or not isField P.baseField then error("Expected a field, instead got "|toString P.baseField);
-    if not instance(P.varRows, ZZ) or P.varRows < 1 then error("Expected a positive integer row count, instead got "|toString P.varRows);
-    if not instance(P.varSym, Symbol) then error("Expected variable symbol, instead got "|toString P.varSym);
-    if not instance(P.algebras, MutableHashTable) then error("Expected type MutableHashTable for algebras, instead got "|toString class P.algebras);
-    if not instance(P.maps, MutableHashTable) then error("Expected type MutableHashTable for maps, instead got "|toString class P.maps)
+    if not sort keys P === sort {baseField, varRows, varSym, algebras, maps} then error("Expected keys {baseField, varRows, varSym, algebras, maps}, instead got "|toString keys P);
+    if not instance(P.baseField, Ring) or not isField P.baseField then error("Expected a field for baseField, instead got "|toString P.baseField);
+    if not instance(P.varRows, ZZ) or P.varRows < 1 then error("Expected a positive integer row count for varRows, instead got "|toString P.varRows);
+    if not instance(P.varSym, Symbol) then error("Expected type Symbol for varSym, instead got type "|toString class P.varSym);
+    if not instance(P.algebras, MutableHashTable) then error("Expected type MutableHashTable for algebras, instead got type "|toString class P.algebras);
+    if not instance(P.maps, MutableHashTable) then error("Expected type MutableHashTable for maps, instead got type "|toString class P.maps)
 )
 
 -- PURPOSE: Make a new PolynomialOIAlgebra
 -- INPUT: '(K, c, x)', a field of coefficients 'K', a positive integer 'c' of rows and a variable symbol 'x'
 -- OUTPUT: A PolynomialOIAlgebra made from K, c, x
-polynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra)
-polynomialOIAlgebra(Ring, ZZ, Symbol) := (K, c, x) -> (
+makePolynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra, Options => {AssertValid => true})
+makePolynomialOIAlgebra(Ring, ZZ, Symbol) := opts -> (K, c, x) -> (
     P := new PolynomialOIAlgebra from {
         baseField => K,
         varRows => c, 
         varSym => x, 
         algebras => new MutableHashTable, 
         maps => new MutableHashTable};
-    assertValid P;
+    if opts.AssertValid then assertValid P;
     P
 )
 
@@ -237,25 +271,25 @@ linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := (P, n, i, j) -> (
 -- OUTPUT: P_n, the width n algebra of P
 -- COMMENT: We use the "position down over term" monomial order and the standard ZZ-grading
 -- COMMENT: "Store => false" will not store the algebra in memory (useful for large computations)
-getAlgebraInWidth = method(TypicalValue => PolynomialRing, Options => {Store => true})
+getAlgebraInWidth = method(TypicalValue => PolynomialRing, Options => {Store => true, AssertValid => true})
 getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := opts -> (P, n) -> (
-    scan({P, n}, assertValid);
+    if opts.AssertValid then scan({P, n}, assertValid);
     if not instance(opts.Store, Boolean) then error("Expected boolean value for Store option, instead got "|toString opts.Store);
 
     -- Return the algebra if it already exists
-    if (P.algebras)#?n then return (P.algebras)#n;
+    if P.algebras#?n then return P.algebras#n;
 
     -- Generate the variables
     local ret;
     variables := new MutableList;
     for j from 1 to n do
-        for i from 1 to P.varRows do variables#(linearFromRowCol(P, n, i, j)) = (P.varSym)_(i, j);
+        for i from 1 to P.varRows do variables#(linearFromRowCol(P, n, i, j)) = P.varSym_(i, j);
     
     -- Make a new algebra
     ret = P.baseField[variables, Degrees => {#variables:1}, MonomialOrder => {Position => Down, Lex}];
 
     -- Store the algebra
-    if opts.Store then (P.algebras)#n = ret;
+    if opts.Store then P.algebras#n = ret;
 
     ret
 )
@@ -264,17 +298,17 @@ getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := opts -> (P, n) -> (
 PolynomialOIAlgebra _ ZZ := (P, n) -> getAlgebraInWidth(P, n)
 
 -- PURPOSE: Get the maps between two algebras in a PolynomialOIAlgebra
--- INPUT: '(P, m, n)', a PolynomialOIAlgebra 'P', a width 'm' and a width 'n' with m ≤ n
+-- INPUT: '(P, m, n)', a PolynomialOIAlgebra 'P', a width 'm' and a width 'n'
 -- OUTPUT: A list of the "OI-induced" algebra maps between P_m and P_n, i.e. P(Hom(m, n))
 -- COMMENT: "Store => false" will not store the maps in memory (useful for large computations)
-getAlgebraMapsBetweenWidths = method(TypicalValue => List, Options => {Store => true})
+getAlgebraMapsBetweenWidths = method(TypicalValue => List, Options => {Store => true, AssertValid => true})
 getAlgebraMapsBetweenWidths(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) -> (
-    scan({P, m, n}, assertValid);
+    if opts.AssertValid then scan({P, m, n}, assertValid);
     if n < m then error("Expected m ≤ n, instead got m = "|toString m|" and n = "|toString n);
     if not instance(opts.Store, Boolean) then error("Expected boolean value for Store option, instead got "|toString opts.Store);
 
     -- Return the maps if they already exist
-    if (P.maps)#?(m, n) then return (P.maps)#(m, n);
+    if P.maps#?(m, n) then return P.maps#(m, n);
 
     targ := getAlgebraInWidth(P, n, Store => opts.Store);
     src := getAlgebraInWidth(P, m, Store => opts.Store);
@@ -288,14 +322,14 @@ getAlgebraMapsBetweenWidths(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) ->
         subs := new List;
 
         for j from 1 to m do
-            for i from 1 to P.varRows do subs = append(subs, src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, (oiMap#1)#(j - 1))));
+            for i from 1 to P.varRows do subs = append(subs, src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, oiMap.assignment#(j - 1))));
 
         algMaps = append(algMaps, map(targ, src, subs))
     );
     ret = algMaps;
 
     -- Store the maps
-    if opts.Store then (P.maps)#(m, n) = ret;
+    if opts.Store then P.maps#(m, n) = ret;
 
     ret
 )
@@ -309,11 +343,12 @@ getAlgebraMapsBetweenWidths(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) ->
 --------------------------------------------------------------------------------
 
 -- Define the new type FreeOIModule
+-- COMMENT: Should be of the form {polyOIAlg => PolynomialOIAlgebra, basisSym => Symbol, genWidths => List, degShifts => List, monOrder => MutableList, modules => MutableHashTable, maps => MutableHashTable}
 -- COMMENT: The lengths of genWidths and degShifts need to be the same
 FreeOIModule = new Type of HashTable
 
 -- Install net method for FreeOIModule
-net FreeOIModule := F -> "Polynomial OI-algebra: "|net toString F.oiAlgebra ||
+net FreeOIModule := F -> "Polynomial OI-algebra: "|net toString F.polyOIAlg ||
     "Basis symbol: "|net F.basisSym ||
     "Generator widths: "|net F.genWidths ||
     "Degree shifts: "|net F.degShifts ||
@@ -324,13 +359,14 @@ net FreeOIModule := F -> "Polynomial OI-algebra: "|net toString F.oiAlgebra ||
 --------------------------------------------------------------------------------
 
 -- Define the new type SchreyerMonomialOrder
+-- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, schreyerList => List}
 SchreyerMonomialOrder = new Type of HashTable
 
 -- Install net method for SchreyerMonomialOrder
 
 -- Validation method for SchreyerMonomialOrder
 assertValid SchreyerMonomialOrder := S -> (
-    if not sort keys S === sort {srcMod, targMod, schreyerList} then error("Invalid SchreyerMonomialOrder HashTable keys: "|toString keys S);
+    if not sort keys S === sort {srcMod, targMod, schreyerList} then error("Expected keys {srcMod, targMod, schreyerList}, instead got "|toString keys S);
     if not instance(S.srcMod, FreeOIModule) or not instance(S.targMod, FreeOIModule) then error("Expected type FreeOIModule for srcMod and targMod, instead got types "|toString class S.srcMod|" and "|toString class S.targMod);
     if S.srcMod === S.targMod then error "srcMod cannot equal targMod";
     scan({S.srcMod, S.targMod}, assertValid);
@@ -340,40 +376,30 @@ assertValid SchreyerMonomialOrder := S -> (
         elt := S.schreyerList#i;
         if not instance(elt, Vector) then error("Expected a Vector, instead got "|toString elt);
 
-        wid := widthOfElement elt;
-        par := freeOIModuleFromElement elt;
+        Width := widthOfElement elt;
+        freeOIMod := freeOIModuleFromElement elt;
 
-        if not class elt === getFreeModuleInWidth(par, wid) then error("Element "|toString i|" of schreyerList does not belong to its specified parent OI-module in width "|toString wid);
-        if not wid == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString wid|" which does not match srcMod.genWidths#i = "|toString S.srcMod.genWidths#i)
+        if not class elt === getFreeModuleInWidth(freeOIMod, Width, UpdateBasis => false) then error("Element "|toString i|" of schreyerList does not belong to its specified free OI-module in width "|toString Width);
+        if not Width == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString S.srcMod.genWidths#i)
     )
 )
 
 -- PURPOSE: Make a new SchreyerMonomialOrder
--- INPUT: '(targModArg, srcModArg, schreyerListArg)', a FreeOIModule 'targModArg', a FreeOIModule 'srcModArg' and a nonempty List 'schreyerListArg' of elements of targModArg
--- OUTPUT: A SchreyerMonomialOrder made from targModArg, srcModArg and schreyerListArg
--- COMMENT: Error if targModArg === srcModArg
-schreyerMonomialOrder = method(TypicalValue => SchreyerMonomialOrder)
-schreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := (targModArg, srcModArg, schreyerListArg) -> (
-    if targModArg === srcModArg then error "srcMod cannot equal targMod";
-    if #schreyerListArg == 0 then error "Expected nonempty List for schreyerList";
-    
-    ret := new SchreyerMonomialOrder from {targMod => targModArg, srcMod => srcModArg, schreyerList => schreyerListArg};
-    assertValid ret;
+-- INPUT: '(G, F, L)', a FreeOIModule 'G', a FreeOIModule 'F' and a  List 'L' of elements of G
+-- OUTPUT: A SchreyerMonomialOrder made from G, F and L
+makeSchreyerMonomialOrder = method(TypicalValue => SchreyerMonomialOrder, Options => {AssertValid => true})
+makeSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L) -> (
+    ret := new SchreyerMonomialOrder from {targMod => G, srcMod => F, schreyerList => L};
+    if opts.AssertValid then assertValid ret;
     ret
 )
 
 -- PURPOSE: Install a SchreyerMonomialOrder on its source module
 -- INPUT: A SchreyerMonomialOrder 'S'
--- OUTPUT: If S is a valid SchreyerMonomialOrder, sets (S.srcMod).monOrder#0 to S
-installSchreyerMonomialOrder = method()
-installSchreyerMonomialOrder SchreyerMonomialOrder := S -> (
-    assertValid S;
-    S.srcMod.monOrder#0 = S
-)
-
--- Shortcut version
-installSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := (targModArg, srcModArg, schreyerListArg) -> (
-    S := schreyerMonomialOrder(targModArg, srcModArg, schreyerListArg);
+-- OUTPUT: If S is a valid SchreyerMonomialOrder, sets S.srcMod.monOrder#0 to S
+installSchreyerMonomialOrder = method(Options => {AssertValid => true})
+installSchreyerMonomialOrder SchreyerMonomialOrder := opts -> S -> (
+    if opts.AssertValid then assertValid S;
     S.srcMod.monOrder#0 = S
 )
 
@@ -383,18 +409,18 @@ installSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := (targModArg, s
 
 -- Validation method for FreeOIModule
 assertValid FreeOIModule := F -> (
-    if not sort keys F === sort {oiAlgebra, basisSym, genWidths, degShifts, monOrder, modules, maps} then error("Invalid FreeOIModule HashTable keys: "|toString keys F);
-    if not instance(F.oiAlgebra, PolynomialOIAlgebra) then error("Expected PolynomialOIAlgebra, instead got "|toString F.oiAlgebra);
-    assertValid F.oiAlgebra;
+    if not sort keys F === sort {polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, maps} then error("Expected keys {polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, maps}, instead got "|toString keys F);
+    if not instance(F.polyOIAlg, PolynomialOIAlgebra) then error("Expected type PolynomialOIAlgebra for polyOIAlg, instead got type "|toString class F.polyOIAlg);
+    assertValid F.polyOIAlg;
 
-    if not instance(F.modules, MutableHashTable) then error("Expected type MutableHashTable for modules, instead got "|toString class F.modules);
-    if not instance(F.maps, MutableHashTable) then error("Expected type MutableHashTable for maps, instead got "|toString class F.maps);
-    if not instance(F.basisSym, Symbol) then error("Expected basis symbol, instead got "|toString F.basisSym);
+    if not instance(F.modules, MutableHashTable) then error("Expected type MutableHashTable for modules, instead got type "|toString class F.modules);
+    if not instance(F.maps, MutableHashTable) then error("Expected type MutableHashTable for maps, instead got type "|toString class F.maps);
+    if not instance(F.basisSym, Symbol) then error("Expected type Symbol for basisSym, instead got type "|toString class F.basisSym);
 
-    if not instance(F.genWidths, List) then error("Expected type List for genWidths, instead got "|toString class F.genWidths);
+    if not instance(F.genWidths, List) then error("Expected type List for genWidths, instead got type "|toString class F.genWidths);
     for l in F.genWidths do if not instance(l, ZZ) then error("Expected a list of integers for genWidths, instead got "|toString F.genWidths);
 
-    if not instance(F.degShifts, List) then error("Expected type List for degShifts, instead got "|toString class F.degShifts);
+    if not instance(F.degShifts, List) then error("Expected type List for degShifts, instead got type "|toString class F.degShifts);
     for l in F.degShifts do if not instance(l, ZZ) then error("Expected a list of integers for degShifts, instead got "|toString F.degShifts);
 
     if not #F.genWidths == #F.degShifts then error "Length of genWidths must equal length of degShifts";
@@ -407,8 +433,8 @@ assertValid FreeOIModule := F -> (
 -- OUTPUT: A FreeOIModule made from P, e and W
 -- COMMENT: Default monomial order is Lex
 -- COMMENT: Default degree shifts are all zero
-freeOIModule = method(TypicalValue => FreeOIModule, Options => {DegreeShifts => null})
-freeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
+makeFreeOIModule = method(TypicalValue => FreeOIModule, Options => {DegreeShifts => null, AssertValid => true})
+makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     if #W == 0 then error("Expected a non-empty list of generator widths, instead got "|toString W);
     
     local shifts;
@@ -417,76 +443,109 @@ freeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     else error("Invalid DegreeShifts option: "|toString opts.DegreeShifts);
 
     ret := new FreeOIModule from {
-        oiAlgebra => P,
+        polyOIAlg => P,
         basisSym => e,
         genWidths => W,
         degShifts => toList shifts,
         monOrder => new MutableList from {Lex},
         modules => new MutableHashTable,
         maps => new MutableHashTable};
-    assertValid ret;
+    if opts.AssertValid then assertValid ret;
 
     ret
 )
 
 --------------------------------------------------------------------------------
--- BEGIN: OIMonomial.m2 --------------------------------------------------------
+-- BEGIN: TermsAndMonomials.m2 -------------------------------------------------
 --------------------------------------------------------------------------------
 
 -- Define the new type BasisIndex
-BasisIndex = new Type of List
+-- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
+-- COMMENT: idx should be from 1 to #freeOIMod.genWidths and oiMap should be a map with source freeOIMod.genWidths#(idx - 1)
+BasisIndex = new Type of HashTable
 
 -- PURPOSE: Make a new BasisIndex
--- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an integer 'i'
+-- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 -- OUTPUT: A BasisIndex made from F, f and i
--- COMMENT: i should be from 1 to #F.genWidths and f should be a map with source F.genWidths#(i - 1)
-basisIndex = method(TypicalValue => BasisIndex)
-basisIndex(FreeOIModule, OIMap, ZZ) := (F, f, i) -> (
-    ret := new BasisIndex from {F, f, i};
-    assertValid ret;
+makeBasisIndex = method(TypicalValue => BasisIndex, Options => {AssertValid => true})
+makeBasisIndex(FreeOIModule, OIMap, ZZ) := opts -> (F, f, i) -> (
+    ret := new BasisIndex from {freeOIMod => F, oiMap => f, idx => i};
+    if opts.AssertValid then assertValid ret;
     ret
 )
 
 -- Validation method for BasisIndex
 assertValid BasisIndex := b -> (
-    if not #b == 3 then error("Expected list of length 3, instead got "|toString b);
-    if not (instance(b#0, FreeOIModule) and instance(b#1, OIMap) and instance(b#2, ZZ)) then error("Expected list of the form {FreeOIModule, OIMap, ZZ}, instead got "|toString b);
-    scan({b#0, b#1}, assertValid);
+    if not sort keys b === sort {freeOIMod, oiMap, idx} then error("Expected keys {freeOIMod, oiMap, idx}, instead got "|toString keys b);
+    if not instance(b.freeOIMod, FreeOIModule) then error("Expected type FreeOIModule for freeOIMod, instead got type "|toString class b.freeOIMod);
+    if not instance(b.oiMap, OIMap) then error("Expected type OIMap for oiMap, instead got type "|toString class b.oiMap);
+    if not instance(b.idx, ZZ) then error("Expected type ZZ for idx, instead got type "|toString class b.idx);
+    scan({b.freeOIMod, b.oiMap}, assertValid);
 
-    freemod := b#0; oimap := b#1; i := b#2;
-    if not (i <= #freemod.genWidths and i >= 1) then error("Expected i between 1 and #genWidths, instead got "|toString i);
-    if not #(oimap#1) == freemod.genWidths#(i - 1) then error("Expected OIMap with source = genWidths#(i - 1), instead got "|toString oimap)
+    genWidths := b.freeOIMod.genWidths;
+    oiMap := b.oiMap;
+    assignment := oiMap.assignment;
+    idx := b.idx;
+
+    if not (idx <= #genWidths and idx >= 1) then error("Expected idx between 1 and #genWidths = "|toString #genWidths|", instead got "|toString idx);
+    if not #assignment == genWidths#(idx - 1) then error("Expected OIMap with source = genWidths#"|toString(idx - 1)|", instead got "|toString oiMap)
 )
 
--- Define the new type OIMonomial
-OIMonomial = new Type of List
+-- Define the new type OITerm
+-- COMMENT: Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
+OITerm = new Type of HashTable
 
--- PURPOSE: Make a new OIMonomial
--- INPUT: '(X, b)', a monomial 'X' in a PolynomialOIAlgebra and a BasisIndex 'b'
--- OUTPUT: An OIMonomial made from X and b
-oiMonomial = method(TypicalValue => OIMonomial)
-oiMonomial(RingElement, BasisIndex) := (X, b) -> (
-    ret := new OIMonomial from {X, b};
-    assertValid ret;
+-- PURPOSE: Make a new OITerm
+-- INPUT: '(elt, b)', a RingElement 'elt' and a BasisIndex 'b'
+-- OUTPUT: An OITerm made from elt and b
+makeOITerm = method(TypicalValue => OITerm, Options => {AssertValid => true})
+makeOITerm(RingElement, BasisIndex) := opts -> (elt, b) -> (
+    ret := new OITerm from {ringElement => elt, basisIndex => b};
+    if opts.AssertValid then assertValid ret;
     ret
 )
 
--- Shortcut version of oiMonomial
--- INPUT: '(X, F, f, i)', a monomial 'X', a FreeOIModule 'F', an OIMap 'f' and an index 'i' from 1 to #F.genWidths
-oiMonomial(RingElement, FreeOIModule, OIMap, ZZ) := (X, F, f, i) -> oiMonomial(X, basisIndex(F, f, i))
+-- Install net method for OITerm
+net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap, f.basisIndex.idx)
+
+-- Validation method for OITerm
+assertValid OITerm := f -> (
+    if not sort keys f === sort {ringElement, basisIndex} then error("Expected keys {ringElement, basisIndex}, instead got "|toString keys f);
+    if not instance(f.ringElement, RingElement) then error("Expected type RingElement for ringElement, instead got "|toString class f.ringElement);
+    if not instance(f.basisIndex, BasisIndex) then error("Expected type BasisIndex for basisIndex, instead got "|toString class f.basisIndex);
+    assertValid f.basisIndex;
+    
+    elt := f.ringElement;
+    freeOIMod := f.basisIndex.freeOIMod;
+    Width := f.basisIndex.oiMap.Width;
+
+    coeffs := ring getFreeModuleInWidth(freeOIMod, Width, UpdateBasis => false); -- Or getAlgebraInWidth(freeOIMod.polyOIAlg, Width);
+    if not class elt === coeffs then error("Expected element of "|toString coeffs|", instead got "|toString elt|" which is an element of "|class elt);
+    if not #terms elt == 1 then error("Expected a term, instead got "|toString elt)
+)
+
+-- Define the new type OIMonomial
+-- COMMENT: Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
+-- COMMENT: ringElement should have coefficient 1
+OIMonomial = new Type of OITerm
+
+-- PURPOSE: Make a new OIMonomial
+-- INPUT: '(elt, b)', a RingElement 'elt' and a BasisIndex 'b'
+-- OUTPUT: An OIMonomial made from elt and b
+makeOIMonomial = method(TypicalValue => OIMonomial, Options => {AssertValid => true})
+makeOIMonomial(RingElement, BasisIndex) := opts -> (elt, b) -> (
+    ret := new OIMonomial from {ringElement => elt, basisIndex => b};
+    if opts.AssertValid then assertValid ret;
+    ret
+)
 
 -- Validation method for OIMonomial
-assertValid OIMonomial := m -> (
-    if not #m == 2 then error("Expected length 2 list for OIMonomial, instead got "|toString m);
-    if not (instance(m#0, RingElement) and instance(m#1, BasisIndex)) then error("Expected list of the form {RingElement, BasisIndex}, instead got "|toString m);
-    elt := m#0; b := m#1;
-
-    assertValid b;
-    freemod := b#0; oimap := b#1; wid := oimap#0;
-    coeffs := ring getFreeModuleInWidth(freemod, wid, UpdateBasis => false); -- UpdateBasis => false avoids an infinite loop
-    if not class elt === coeffs then error("Expected element of "|toString coeffs|", instead got "|toString elt|" which is an element of "|class elt);
-    if not #(terms elt) == 1 then error("Expected a monomial, instead got "|toString elt);
-    if not leadCoefficient elt == 1_(freemod.oiAlgebra.baseField) then error("Expected lead coefficient of 1, instead got "|toString(leadCoefficient elt))
+assertValid OIMonomial := f -> (
+    assertValid new OITerm from f;
+    
+    elt := f.ringElement;
+    baseField := f.basisIndex.freeOIMod.polyOIAlg.baseField;
+    if not leadCoefficient elt == 1_baseField then error("Expected lead coefficient of 1, instead got "|toString leadCoefficient elt)
 )
 
 -- Comparison method for OIMonomial
@@ -494,61 +553,116 @@ OIMonomial ? OIMonomial := (f, g) -> (
     scan({f, g}, assertValid);
     if f === g then return symbol ==;
 
-    Xf := f#0; Xg := g#0; -- Get the monomials in the PolynomialOIAlgebra
-    bf := f#1; bg := g#1; -- Get the BasisIndex objects
-    oimapf := bf#1; oimapg := bg#1; -- Get the OIMaps
-    indexf := bf#2; indexg := bg#2; -- Get the d_i
+    eltf := f.ringElement; eltg := g.ringElement;
+    bf := f.basisIndex; bg := g.basisIndex;
+    oiMapf := bf.oiMap; oiMapg := bg.oiMap;
+    idxf := bf.idx; idxg := bg.idx;
 
-    if not bf#0 === bg#0 then return incomparable; -- Must belong to the same FreeOIModule
-    freemod := bf#0;
+    if not bf.freeOIMod === bg.freeOIMod then return incomparable; -- Must belong to the same FreeOIModule
+    freeOIMod := bf.freeOIMod;
 
-    ord := freemod.monOrder#0;
-    if ord === Lex then ( -- LEX ORDER
-        vectf := prepend(oimapf#0, oimapf#1);
-        vectg := prepend(oimapg#0, oimapg#1);
+    monOrder := freeOIMod.monOrder#0;
+    if monOrder === Lex then ( -- LEX ORDER
+        vectf := prepend(oiMapf.Width, oiMapf.assignment);
+        vectg := prepend(oiMapg.Width, oiMapg.assignment);
 
-        if not indexf == indexg then if indexf < indexg then return symbol > else return symbol <;
-        if not vectf == vectg then return vectf ? vectg; -- Here we may assume #vectf = #vectg since indexf = indexg
-        use class Xf;
-        return Xf ? Xg -- Use the lex order defined in the coefficient ring (see getAlgebraInWidth)
+        if not idxf == idxg then ( if idxf < idxg then return symbol > else return symbol < );
+        if not vectf == vectg then return vectf ? vectg; -- Note: #vectf = #vectg since idxf = idxg
+        use class eltf; -- Note: since vectf = vectg we have oiMapf.Width = oiMapg.Width and hence class eltf = class eltg
+        return eltf ? eltg -- Use the lex order defined in the coefficient ring (see getAlgebraInWidth)
     )
-    else if instance(ord, SchreyerMonomialOrder) then ( -- SCHREYER ORDER
+    else if instance(monOrder, SchreyerMonomialOrder) then ( -- SCHREYER ORDER
         -- IMPLEMENT THIS
     )
     else error "Monomial order not supported"
 )
 
+-- Define the new type OIBasisElement
+-- COMMENT: Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
+-- COMMENT: ringElement should be 1
+OIBasisElement = new Type of OIMonomial
+
+-- PURPOSE: Make a new OIBasisElement
+-- INPUT: A BasisIndex 'b'
+-- OUTPUT: An OIBasisElement made from b
+makeOIBasisElement = method(TypicalValue => OIBasisElement, Options => {AssertValid => true})
+makeOIBasisElement BasisIndex := opts -> b -> (
+    if opts.AssertValid then assertValid b;
+
+    one := 1_(ring getFreeModuleInWidth(b.freeOIMod, b.oiMap.Width, UpdateBasis => false));
+    new OIBasisElement from makeOIMonomial(one, b, AssertValid => opts.AssertValid)
+)
+
+-- Validation method for OIBasisElement
+assertValid OIBasisElement := f -> (
+    assertValid new OITerm from f;
+
+    elt := f.ringElement;
+    b := f.basisIndex;
+    one := 1_(ring getFreeModuleInWidth(b.freeOIMod, b.oiMap.Width, UpdateBasis => false));
+    if not elt === one then error("Expected ringElement = 1, instead got "|toString elt)
+)
+
+-- PURPOSE: Get the basis elements in a specified width
+-- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
+-- OUTPUT: A list of the OIBasisElements in F_n ordered from greatest to least
+getOIBasisElementsInWidth = method(TypicalValue => List, Options => {AssertValid => true})
+getOIBasisElementsInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
+    if opts.AssertValid then scan({F, n}, assertValid);
+    ret := new List;
+    
+    for i to #F.genWidths - 1 do (
+        oiMaps := getOIMaps(F.genWidths#i, n);
+        
+        for oiMap in oiMaps do ret = append(ret, makeOIBasisElement(makeBasisIndex(F, oiMap, i + 1, AssertValid => false), AssertValid => opts.AssertValid))
+    );
+
+    reverse sort ret
+)
+
 --------------------------------------------------------------------------------
--- END: OIMonomial.m2 ----------------------------------------------------------
+-- END: TermsAndMonomials.m2 ---------------------------------------------------
 --------------------------------------------------------------------------------
 
 -- PURPOSE: Get the free module from a FreeOIModule in a specified width
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
--- OUTPUT: F_n, the free module in width n
+-- OUTPUT: F_n, the width n free module of F
 -- COMMENT: "Store => false" will not store the module in memory (useful for large computations)
--- COMMENT: "UpdateBasis => false" will not modify the basis elements
-getFreeModuleInWidth = method(TypicalValue => Module, Options => {Store => true, UpdateBasis => true})
+-- COMMENT: "UpdateBasis => false" will not modify the basis elements (useful for avoiding infinite loops)
+getFreeModuleInWidth = method(TypicalValue => Module, Options => {Store => true, UpdateBasis => true, AssertValid => true})
 getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
-    scan({F, n}, assertValid);
+    if opts.AssertValid then scan({F, n}, assertValid);
     if not instance(opts.Store, Boolean) then error("Expected boolean value for Store option, instead got "|toString opts.Store);
     if not instance(opts.UpdateBasis, Boolean) then error("Expected boolean value for UpdateBasis option, instead got "|toString opts.UpdateBasis);
 
+    local ret;
+
     -- Return the module if it already exists
-    if (F.modules)#?n then return (F.modules)#n;
+    if F.modules#?n then ret = F.modules#n
+    else (
+        -- Generate the degrees
+        alg := getAlgebraInWidth(F.polyOIAlg, n, Store => opts.Store);
+        degList := new List;
+        for i to #F.genWidths - 1 do degList = append(degList, binomial(n, F.genWidths#i) : F.degShifts#i);
 
-    -- Generate the degrees
-    alg := getAlgebraInWidth(F.oiAlgebra, n, Store => opts.Store);
-    degList := new List;
-    for i to #(F.genWidths) - 1 do degList = append(degList, binomial(n, (F.genWidths)#i) : (F.degShifts)#i);
+        -- Make the module
+        retHash := new MutableHashTable from alg^degList;
+        retHash.Width = n;
+        retHash.freeOIMod = F;
+        ret = new Module from retHash;
+    );
 
-    -- Make the module
-    retHash := new MutableHashTable from alg^degList;
-    retHash.Width = n;
-    retHash.parentModule = F;
-    ret := new Module from retHash;
+    -- Update the basis elements
+    if opts.UpdateBasis then (
+        basisElts := getOIBasisElementsInWidth(F, n);
+        for i to #basisElts - 1 do (
+            basisIndex := (basisElts#i).basisIndex;
+            F.basisSym_(new List from {basisIndex.oiMap.Width, basisIndex.oiMap.assignment}, basisIndex.idx) <- ret_i
+        )
+    );
 
     -- Store the module
-    if opts.Store then (F.modules)#n = ret;
+    if opts.Store then F.modules#n = ret;
 
     ret
 )
@@ -573,9 +687,9 @@ widthOfElement Vector := f -> (
 freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
 freeOIModuleFromElement Vector := f -> (
     c := class f;
-    if not c.?parentModule then error("Element "|toString f|" has no key parentModule");
-    if not instance(c.parentModule, FreeOIModule) then error("Expected FreeOIModule, instead got "|toString c.parentModule);
-    c.parentModule
+    if not c.?freeOIMod then error("Element "|toString f|" has no key freeOIMod");
+    if not instance(c.freeOIMod, FreeOIModule) then error("Expected FreeOIModule, instead got "|toString c.freeOIMod);
+    c.freeOIMod
 )
 
 --------------------------------------------------------------------------------
@@ -610,3 +724,6 @@ Node
 
 
 end
+
+P = makePolynomialOIAlgebra(QQ, 1, x);
+F = makeFreeOIModule(P, e, {2,3})

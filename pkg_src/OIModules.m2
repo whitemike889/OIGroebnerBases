@@ -2,7 +2,8 @@
 
 -- PURPOSE: Algorithms for computing Gröbner bases, syzygies and free resolutions for submodules of free OI-modules over Noetherian polynomial OI-algebras
 -- PROGRAMMER: Michael Morrow (https://michaelmorrow.org)
--- LAST UPDATED: April 2022
+-- LAST UPDATED: May 2022
+-- COMMENT: This package was made using Macualay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
 newPackage("OIModules",
     Headline => "Computation in OI-modules over Noetherian OI-algebras",
@@ -13,8 +14,7 @@ newPackage("OIModules",
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
     DebuggingMode => true,
-    HomePage => "https://github.com/morrowmh/OIModules",
-    Configuration => { "assertValid" => true } -- Using "false" will speed up computation but is less safe
+    HomePage => "https://github.com/morrowmh/OIModules"
 )
 
 --------------------------------------------------------------------------------
@@ -33,9 +33,9 @@ load "Exports.m2"
 
 assertValid = method() -- For data validation
 
-load "PolynomialOIAlgebra.m2"   -- Also loads OI.m2
+load "PolynomialOIAlgebra.m2"   -- Also loads OIMap.m2
 
-load "FreeOIModule.m2"          -- Also loads SchreyerMonomialOrder.m2 and OIMonomial.m2
+load "FreeOIModule.m2"          -- Also loads SchreyerMonomialOrder.m2 and TermsAndMonomials.m2
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -56,3 +56,6 @@ load "Documentation.m2"
 load "Tests.m2"
 
 end
+
+P = makePolynomialOIAlgebra(QQ, 1, x);
+F = makeFreeOIModule(P, e, {2,3})
