@@ -1,0 +1,3 @@
+# Ignore .old files and folders
+*.old
+*.old/

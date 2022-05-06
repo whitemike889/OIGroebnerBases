@@ -70,7 +70,7 @@ load "TermsAndMonomials.m2"
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
 -- OUTPUT: F_n, the width n free module of F
 -- COMMENT: "Store => false" will not store the module in memory (useful for large computations)
--- COMMENT: "UpdateBasis => false" will not modify the basis elements (useful for avoiding infinite loops)
+-- COMMENT: "UpdateBasis => false" will not modify the basis elements
 getFreeModuleInWidth = method(TypicalValue => Module, Options => {Store => true, UpdateBasis => true, AssertValid => true})
 getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
     if opts.AssertValid then scan({F, n}, assertValid);
@@ -96,7 +96,7 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 
     -- Update the basis elements
     if opts.UpdateBasis then (
-        basisElts := getOIBasisElementsInWidth(F, n);
+        basisElts := getOIBasisElementsInWidth(F, n, AssertValid => false);
         for i to #basisElts - 1 do (
             basisIndex := (basisElts#i).basisIndex;
             F.basisSym_(new List from {basisIndex.oiMap.Width, basisIndex.oiMap.assignment}, basisIndex.idx) <- ret_i

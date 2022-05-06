@@ -606,13 +606,14 @@ assertValid OIBasisElement := f -> (
 -- PURPOSE: Get the basis elements in a specified width
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
 -- OUTPUT: A list of the OIBasisElements in F_n ordered from greatest to least
+-- COMMENT: This method is very slow
 getOIBasisElementsInWidth = method(TypicalValue => List, Options => {AssertValid => true})
 getOIBasisElementsInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
     if opts.AssertValid then scan({F, n}, assertValid);
     ret := new List;
     
     for i to #F.genWidths - 1 do (
-        oiMaps := getOIMaps(F.genWidths#i, n);
+        oiMaps := getOIMaps(F.genWidths#i, n, AssertValid => opts.AssertValid);
         
         for oiMap in oiMaps do ret = append(ret, makeOIBasisElement(makeBasisIndex(F, oiMap, i + 1, AssertValid => false), AssertValid => opts.AssertValid))
     );
@@ -628,7 +629,7 @@ getOIBasisElementsInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
 -- OUTPUT: F_n, the width n free module of F
 -- COMMENT: "Store => false" will not store the module in memory (useful for large computations)
--- COMMENT: "UpdateBasis => false" will not modify the basis elements (useful for avoiding infinite loops)
+-- COMMENT: "UpdateBasis => false" will not modify the basis elements
 getFreeModuleInWidth = method(TypicalValue => Module, Options => {Store => true, UpdateBasis => true, AssertValid => true})
 getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
     if opts.AssertValid then scan({F, n}, assertValid);
@@ -654,7 +655,7 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 
     -- Update the basis elements
     if opts.UpdateBasis then (
-        basisElts := getOIBasisElementsInWidth(F, n);
+        basisElts := getOIBasisElementsInWidth(F, n, AssertValid => false);
         for i to #basisElts - 1 do (
             basisIndex := (basisElts#i).basisIndex;
             F.basisSym_(new List from {basisIndex.oiMap.Width, basisIndex.oiMap.assignment}, basisIndex.idx) <- ret_i

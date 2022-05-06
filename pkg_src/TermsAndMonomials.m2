@@ -93,7 +93,7 @@ assertValid OIMonomial := f -> (
 
 -- Comparison method for OIMonomial
 OIMonomial ? OIMonomial := (f, g) -> (
-    scan({f, g}, assertValid);
+    -- scan({f, g}, assertValid); -- Slow
     if f === g then return symbol ==;
 
     eltf := f.ringElement; eltg := g.ringElement;
@@ -106,13 +106,11 @@ OIMonomial ? OIMonomial := (f, g) -> (
 
     monOrder := freeOIMod.monOrder#0;
     if monOrder === Lex then ( -- LEX ORDER
-        vectf := prepend(oiMapf.Width, oiMapf.assignment);
-        vectg := prepend(oiMapg.Width, oiMapg.assignment);
 
         if not idxf == idxg then ( if idxf < idxg then return symbol > else return symbol < );
-        if not vectf == vectg then return vectf ? vectg; -- Note: #vectf = #vectg since idxf = idxg
-        use class eltf; -- Note: since vectf = vectg we have oiMapf.Width = oiMapg.Width and hence class eltf = class eltg
-        return eltf ? eltg -- Use the lex order defined in the coefficient ring (see getAlgebraInWidth)
+        if not vectf == vectg then return vectf ? vectg;
+        use class eltf;
+        return eltf ? eltg
     )
     else if instance(monOrder, SchreyerMonomialOrder) then ( -- SCHREYER ORDER
         -- IMPLEMENT THIS
@@ -155,7 +153,7 @@ getOIBasisElementsInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
     ret := new List;
     
     for i to #F.genWidths - 1 do (
-        oiMaps := getOIMaps(F.genWidths#i, n);
+        oiMaps := getOIMaps(F.genWidths#i, n, AssertValid => opts.AssertValid);
         
         for oiMap in oiMaps do ret = append(ret, makeOIBasisElement(makeBasisIndex(F, oiMap, i + 1, AssertValid => false), AssertValid => opts.AssertValid))
     );
