@@ -4,12 +4,13 @@
 
 -- PURPOSE: Check if a given integer is nonnegative
 -- INPUT: An integer 'n'
--- OUTPUT: Nothing if 0 ≤ n, otherwise error
-assertValid ZZ := n -> if n < 0 then error("Expected a nonnegative integer, instead got "|toString n)
+-- OUTPUT: Nothing if n is nonnegative, otherwise error
+verifyData ZZ := n -> if n < 0 then error("Expected a nonnegative integer, instead got "|toString n)
 
 -- PURPOSE: Define the new type OIMap
 -- COMMENT: Should be of the form {Width => ZZ, assignment => List}
 OIMap = new Type of HashTable
+OIMap.synonym = "OI-map"
 
 -- Install toString method for OIMap
 toString OIMap := f -> toString new List from {f.Width, f.assignment}
@@ -17,11 +18,11 @@ toString OIMap := f -> toString new List from {f.Width, f.assignment}
 -- Install net method for OIMap
 net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
 
--- Validation method for OIMap
-assertValid OIMap := f -> (
+-- Verification method for OIMap
+verifyData OIMap := f -> (
     if not sort keys f === sort {Width, assignment} then error("Expected keys {Width, assignment}, instead got "|toString keys f);
     if not instance(f.Width, ZZ) then error("Expected type ZZ for Width, instead got type "|toString class f.Width); 
-    assertValid f.Width;
+    verifyData f.Width;
 
     bad := false;
     for i to #f.assignment - 1 do (
@@ -36,26 +37,22 @@ assertValid OIMap := f -> (
 -- PURPOSE: Make a new OIMap
 -- INPUT: '(n, L)', a width 'n' and a list 'L'
 -- OUTPUT: An OIMap made from n and L
-makeOIMap = method(TypicalValue => OIMap, Options => {AssertValid => true})
+makeOIMap = method(TypicalValue => OIMap, Options => {VerifyData => true})
 makeOIMap(ZZ, List) := opts -> (n, L) -> (
-    f := new OIMap from {Width => n, assignment => L};
-    if opts.AssertValid then assertValid f;
-    f
+    ret := new OIMap from {Width => n, assignment => L};
+    if opts.VerifyData then verifyData ret;
+    ret
 )
 
 -- PURPOSE: Get all OI-maps between two widths
 -- INPUT: '(m, n)', a width 'm' and a width 'n'
 -- OUTPUT: A list of the OI-maps from m to n
--- COMMENT: Returns the empty list if n < m
-getOIMaps = method(TypicalValue => List, Options => {AssertValid => true})
-getOIMaps(ZZ, ZZ) := opts -> (m, n) -> (
-    if opts.AssertValid then scan({m, n}, assertValid);
+getOIMaps = method(TypicalValue => List)
+getOIMaps(ZZ, ZZ) := (m, n) -> (
     if n < m then return {};
-
-    -- Generate OI-maps
     ret := new List;
     sets := subsets(set toList(1..n), m);
-    for s in sets do ret = append(ret, makeOIMap(n, sort toList s));
+    for s in sets do ret = append(ret, makeOIMap(n, sort toList s, VerifyData => false));
 
     ret
 )

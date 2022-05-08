@@ -1,9 +1,9 @@
 -- -*- coding: utf-8 -*-
 
 -- PURPOSE: Algorithms for computing Gröbner bases, syzygies and free resolutions for submodules of free OI-modules over Noetherian polynomial OI-algebras
--- PROGRAMMER: Michael Morrow (https://michaelmorrow.org)
+-- PROGRAMMER: Michael Morrow
 -- LAST UPDATED: May 2022
--- COMMENT: This package was made using Macualay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
+-- COMMENT: This package was made using Macaulay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
 newPackage("OIModules",
     Headline => "Computation in OI-modules over Noetherian OI-algebras",
@@ -31,11 +31,13 @@ load "Exports.m2"
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-assertValid = method() -- For data validation
+verifyData = method() -- For data verification
 
-load "PolynomialOIAlgebra.m2"   -- Also loads OIMap.m2
+load "OIMap.m2"
 
-load "FreeOIModule.m2"          -- Also loads SchreyerMonomialOrder.m2 and TermsAndMonomials.m2
+load "PolynomialOIAlgebra.m2"
+
+load "FreeOIModule.m2"
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------

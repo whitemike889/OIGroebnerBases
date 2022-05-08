@@ -4,10 +4,10 @@ export {
     ------------------------------------
 
     -- Methods
-    "assertValid",
+    "verifyData",
 
     -- Options
-    "AssertValid",
+    "VerifyData",
 
     ------------------------------------
     -- From OIMap.m2 -------------------
@@ -35,10 +35,8 @@ export {
     "makePolynomialOIAlgebra",
     "getAlgebraInWidth",
     "linearFromRowCol",
-    "getAlgebraMapsBetweenWidths",
-
-    -- Options
-    "Store",
+    "algebraMapFromOIMap",
+    "getInducedAlgebraMaps",
 
     -- Keys
     "varRows",
@@ -78,7 +76,6 @@ export {
     "makeOITerm",
     "makeOIMonomial",
     "makeOIBasisElement",
-    "getOIBasisElementsInWidth",
 
     -- Keys
     "freeOIMod",
@@ -93,16 +90,19 @@ export {
 
     -- Types
     "FreeOIModule",
+    "ModuleInWidth",
+    "VectorInWidth",
 
     -- Methods
     "makeFreeOIModule",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
+    "moduleMapFromOIMap",
+    "getInducedModuleMaps",
 
     -- Options
     "DegreeShifts",
-    "UpdateBasis",
 
     -- Keys
     "polyOIAlg",
