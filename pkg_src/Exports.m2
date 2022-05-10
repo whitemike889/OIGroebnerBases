@@ -76,6 +76,9 @@ export {
     "makeOITerm",
     "makeOIMonomial",
     "makeOIBasisElement",
+    "oiMonomialFromOITerm",
+    "getOITermsFromVector",
+    "leadOITerm",
 
     -- Keys
     "freeOIMod",
@@ -90,15 +93,13 @@ export {
 
     -- Types
     "FreeOIModule",
-    "ModuleInWidth",
-    "VectorInWidth",
 
     -- Methods
     "makeFreeOIModule",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
-    "moduleMapFromOIMap",
+    "getInducedModuleMap",
     "getInducedModuleMaps",
 
     -- Options
@@ -110,5 +111,6 @@ export {
     "genWidths",
     "degShifts",
     "monOrder",
-    "modules"
+    "modules",
+    "oiBasisElements"
 }

@@ -101,6 +101,9 @@ export {
     "makeOITerm",
     "makeOIMonomial",
     "makeOIBasisElement",
+    "oiMonomialFromOITerm",
+    "getOITermsFromVector",
+    "leadOITerm",
 
     -- Keys
     "freeOIMod",
@@ -115,15 +118,13 @@ export {
 
     -- Types
     "FreeOIModule",
-    "ModuleInWidth",
-    "VectorInWidth",
 
     -- Methods
     "makeFreeOIModule",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
-    "moduleMapFromOIMap",
+    "getInducedModuleMap",
     "getInducedModuleMaps",
 
     -- Options
@@ -135,7 +136,8 @@ export {
     "genWidths",
     "degShifts",
     "monOrder",
-    "modules"
+    "modules",
+    "oiBasisElements"
 }
 
 --------------------------------------------------------------------------------
@@ -144,15 +146,13 @@ export {
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-verifyData = method() -- For data verification
+verifyData = method()
 
 --------------------------------------------------------------------------------
 -- BEGIN: OIMap.m2 -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
--- PURPOSE: Check if a given integer is nonnegative
--- INPUT: An integer 'n'
--- OUTPUT: Nothing if n is nonnegative, otherwise error
+-- Verification method for ZZ
 verifyData ZZ := n -> if n < 0 then error("Expected a nonnegative integer, instead got "|toString n)
 
 -- PURPOSE: Define the new type OIMap
@@ -256,8 +256,8 @@ makePolynomialOIAlgebra(Ring, ZZ, Symbol) := opts -> (K, c, x) -> (
 -- OUTPUT: The index of x_(i,j) in the list of variables ordered so that in P_n we have x_(i,j) > x_(i',j') iff j > j' or j = j' and i > i'
 linearFromRowCol = method(TypicalValue => ZZ, Options => {VerifyData => true})
 linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := opts -> (P, n, i, j) -> (
-    if opts.VerifyData then scan({P, n}, verifyData);
     if n == 0 then return null;
+    if opts.VerifyData then scan({P, n}, verifyData);
     if i < 1 or i > P.varRows then error("Expected row between 1 and "|toString P.varRows|", instead got "|toString i);
     if j < 1 or j > n then error("Expected column between 1 and "|toString n|", instead got "|toString j);
 
@@ -326,9 +326,9 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := opts -> (P, f) -> (
 -- OUTPUT: A list of the elements in P(Hom(m, n))
 getInducedAlgebraMaps = method(TypicalValue => List, Options => {VerifyData => true})
 getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) -> (
-    if opts.VerifyData then scan({P, m, n}, verifyData);
     if n < m then return {};
-
+    if opts.VerifyData then scan({P, m, n}, verifyData);
+    
     -- Get the maps
     ret := new List;
     oiMaps := getOIMaps(m, n);
@@ -350,6 +350,9 @@ getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) -> (
 FreeOIModule = new Type of HashTable
 FreeOIModule.synonym = "free OI-module"
 
+-- Install toString method for FreeOIModule
+toString FreeOIModule := F -> "genWidths = "|toString F.genWidths | ", degShifts = "|toString F.degShifts
+
 -- Install net method for FreeOIModule
 net FreeOIModule := F -> "Polynomial OI-algebra: "|toString F.polyOIAlg ||
     "Basis symbol: "|net F.basisSym ||
@@ -367,6 +370,10 @@ SchreyerMonomialOrder = new Type of HashTable
 SchreyerMonomialOrder.synonym = "Schreyer monomial order"
 
 -- Install net method for SchreyerMonomialOrder
+net SchreyerMonomialOrder := S -> "<<Schreyer monomial order>>"||
+    "Source module: "|toString S.srcMod ||
+    "Target module: "|toString S.targMod ||
+    "Schreyer list: "|net S.schreyerList
 
 -- Verification method for SchreyerMonomialOrder
 verifyData SchreyerMonomialOrder := S -> (
@@ -379,12 +386,9 @@ verifyData SchreyerMonomialOrder := S -> (
     for i to #S.schreyerList - 1 do (
         elt := S.schreyerList#i;
         if not instance(elt, Vector) then error("Expected a Vector, instead got "|toString elt);
-
-        Width := widthOfElement elt;
-        freeOIMod := freeOIModuleFromElement elt;
-
-        if not class elt === getFreeModuleInWidth(freeOIMod, Width, VerifyData => false) then error("Element "|toString i|" of schreyerList does not belong to its specified free OI-module in width "|toString Width);
-        if not Width == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString S.srcMod.genWidths#i)
+        verifyData elt;
+        
+        if not (class elt).Width == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString (class elt).Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString S.srcMod.genWidths#i)
     )
 )
 
@@ -404,7 +408,7 @@ makeSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L)
 installSchreyerMonomialOrder = method(Options => {VerifyData => true})
 installSchreyerMonomialOrder SchreyerMonomialOrder := opts -> S -> (
     if opts.VerifyData then verifyData S;
-    S.srcMod.monOrder#0 = S
+    S.srcMod.monOrder#0 = S;
 )
 
 --------------------------------------------------------------------------------
@@ -524,7 +528,7 @@ verifyData OITerm := f -> (
     freeOIMod := f.basisIndex.freeOIMod;
     Width := f.basisIndex.oiMap.Width;
 
-    coeffs := ring getFreeModuleInWidth(freeOIMod, Width, VerifyData => false); -- Or getAlgebraInWidth(freeOIMod.polyOIAlg, Width);
+    coeffs := getAlgebraInWidth(freeOIMod.polyOIAlg, Width, VerifyData => false);
     if not class elt === coeffs then error("Expected element of "|toString coeffs|", instead got "|toString elt|" which is an element of "|class elt);
     if not #terms elt == 1 then error("Expected a term, instead got "|toString elt)
 )
@@ -580,6 +584,19 @@ OIMonomial ? OIMonomial := (f, g) -> (
     else error "Monomial order not supported"
 )
 
+-- PURPOSE: Get the monomial component of an OITerm
+-- INPUT: An OITerm 'f'
+-- OUTPUT: The OIMonomial part of f
+oiMonomialFromOITerm = method(TypicalValue => OIMonomial, Options => {VerifyData => true})
+oiMonomialFromOITerm OITerm := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    ringElement := f.ringElement / leadCoefficient f.ringElement;
+    makeOIMonomial(ringElement, f.basisIndex, VerifyData => false)
+)
+
+-- Comparison method for OITerm
+OITerm ? OITerm := (f, g) -> return oiMonomialFromOITerm(f, VerifyData => false) ? oiMonomialFromOITerm(g, VerifyData => false)
+
 -- Define the new type OIBasisElement
 -- COMMENT: Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
 OIBasisElement = new Type of OIMonomial
@@ -592,7 +609,7 @@ makeOIBasisElement = method(TypicalValue => OIBasisElement, Options => {VerifyDa
 makeOIBasisElement BasisIndex := opts -> b -> (
     if opts.VerifyData then verifyData b;
 
-    one := 1_(ring getFreeModuleInWidth(b.freeOIMod, b.oiMap.Width, VerifyData => false));
+    one := 1_(getAlgebraInWidth(b.freeOIMod.polyOIAlg, b.oiMap.Width, VerifyData => false));
     new OIBasisElement from makeOIMonomial(one, b, VerifyData => false)
 )
 
@@ -602,8 +619,42 @@ verifyData OIBasisElement := f -> (
 
     elt := f.ringElement;
     b := f.basisIndex;
-    one := 1_(ring getFreeModuleInWidth(b.freeOIMod, b.oiMap.Width, VerifyData => false));
+    one := 1_(getAlgebraInWidth(b.freeOIMod.polyOIAlg, b.oiMap.Width, VerifyData => false));
     if not elt === one then error("Expected ringElement = 1, instead got "|toString elt)
+)
+
+-- PURPOSE: Convert an element from vector form to a list of OITerms
+-- INPUT: A Vector 'v'
+-- OUTPUT: A List of OITerms corresponding to the terms of v sorted from greatest to least
+getOITermsFromVector = method(TypicalValue => List, Options => {VerifyData => true})
+getOITermsFromVector Vector := opts -> v -> (
+    if opts.VerifyData then verifyData v;
+
+    freeOIMod := (class v).freeOIMod;
+    Width := (class v).Width;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width, VerifyData => false);
+    termList := new List;
+    entryList := entries v;
+
+    for i to #entryList - 1 do (
+        if entryList#i == 0 then continue;
+
+        oiBasisElement := freeMod.oiBasisElements#i;
+        termList = append(termList, makeOITerm(entryList#i, oiBasisElement.basisIndex, VerifyData => false))
+    );
+
+    reverse sort termList
+)
+
+-- PURPOSE: Get the leading OITerm from a vector
+-- INPUT: A Vector 'v'
+-- OUTPUT: The largest OITerm in v
+leadOITerm = method(TypicalValue => OITerm, Options => {VerifyData => true})
+leadOITerm Vector := opts -> v -> (
+    if opts.VerifyData then verifyData v;
+    oiTerms := getOITermsFromVector(v, VerifyData => false);
+    if #oiTerms == 0 then return {};
+    oiTerms#0
 )
 
 --------------------------------------------------------------------------------
@@ -631,7 +682,15 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
         retHash := new MutableHashTable from alg^degList;
         retHash.Width = n;
         retHash.freeOIMod = F;
-        ret = new Module from retHash;
+        retHash.oiBasisElements = new List;
+        
+        -- Generate the OIBasisElements
+        for i to #F.genWidths - 1 do (
+            oiMaps := getOIMaps(F.genWidths#i, n);
+            for oiMap in oiMaps do retHash.oiBasisElements = append(retHash.oiBasisElements, makeOIBasisElement(makeBasisIndex(F, oiMap, i + 1, VerifyData => false), VerifyData => false))
+        );
+
+        ret = new Module from retHash
     );
 
     -- Store the module
@@ -643,26 +702,52 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 -- Subscript version of getFreeModuleInWidth
 FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
 
+-- Verification method for Vector
+verifyData Vector := f -> (
+    c := class f;
+    if not c.?Width then error("Element "|toString f|" has no key Width");
+    if not instance(c.Width, ZZ) then error("Expected type ZZ for Width, instead got type "|toString class c.Width);
+    verifyData c.Width;
+
+    if not c.?freeOIMod then error("Element "|toString f|" has no key freeOIMod");
+    if not instance(c.freeOIMod, FreeOIModule) then error("Expected type FreeOIModule for freeOIMod, instead got type "|toString class c.freeOIMod);
+    verifyData c.freeOIMod;
+
+    if not c === getFreeModuleInWidth(c.freeOIMod, c.Width, VerifyData => false) then error("Element "|toString f|" does not belong to its specified free OI-module in width "|toString c.Width)
+)
+
 -- PURPOSE: Get the width of an element
 -- INPUT: A Vector 'f'
 -- OUTPUT: The width of f
-widthOfElement = method(TypicalValue => ZZ)
-widthOfElement Vector := f -> (
-    c := class f;
-    if not c.?Width then error("Element "|toString f|" has no key Width");
-    if not instance(c.Width, ZZ) then error("Expected integer, instead got "|toString c.Width);
-    c.Width
+widthOfElement = method(TypicalValue => ZZ, Options => {VerifyData => true})
+widthOfElement Vector := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    (class f).Width
 )
 
 -- PURPOSE: Get the FreeOIModule containing an element
 -- INPUT: A Vector 'f'
 -- OUTPUT: The FreeOIModule containing f
-freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
-freeOIModuleFromElement Vector := f -> (
+freeOIModuleFromElement = method(TypicalValue => FreeOIModule, Options => {VerifyData => true})
+freeOIModuleFromElement Vector := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    (class f).freeOIMod
+)
+
+-- Install custom printing method for elements of free OI-modules
+oldNet = Vector # net -- Thanks to Paul Zinn-Justin for showing me this
+net Vector := f -> (
     c := class f;
-    if not c.?freeOIMod then error("Element "|toString f|" has no key freeOIMod");
-    if not instance(c.freeOIMod, FreeOIModule) then error("Expected FreeOIModule, instead got "|toString c.freeOIMod);
-    c.freeOIMod
+    if not (c.?freeOIMod and c.?Width) then return oldNet f;
+    verifyData f;
+
+    oiTerms := getOITermsFromVector(f, VerifyData => false);
+    if #oiTerms == 0 then return oldNet 0;
+    if #oiTerms == 1 then return oldNet oiTerms#0;
+    str := "";
+    for i to #oiTerms - 2 do str = str | net oiTerms#i | " + ";
+    str = str | net oiTerms#-1;
+    str
 )
 
 --------------------------------------------------------------------------------
@@ -698,5 +783,15 @@ Node
 
 end
 
+-- Scratch work section
+
+load "OIModules.m2"
 P = makePolynomialOIAlgebra(QQ, 1, x);
-F = makeFreeOIModule(P, e, {2,3})
+F = makeFreeOIModule(P, e, {2,3});
+F_5;
+f = x_(1,5)*(F_5)_10 + x_(1,3)^2*(F_5)_2;
+F_6;
+g = x_(1,6)*(F_6)_21;
+G = makeFreeOIModule(P, d, {5, 6});
+S = makeSchreyerMonomialOrder(F, G, {f, g});
+installSchreyerMonomialOrder S

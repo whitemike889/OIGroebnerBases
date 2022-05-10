@@ -2,9 +2,7 @@
 -- BEGIN: OIMap.m2 -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
--- PURPOSE: Check if a given integer is nonnegative
--- INPUT: An integer 'n'
--- OUTPUT: Nothing if n is nonnegative, otherwise error
+-- Verification method for ZZ
 verifyData ZZ := n -> if n < 0 then error("Expected a nonnegative integer, instead got "|toString n)
 
 -- PURPOSE: Define the new type OIMap

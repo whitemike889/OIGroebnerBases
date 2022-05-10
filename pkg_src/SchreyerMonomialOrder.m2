@@ -8,6 +8,10 @@ SchreyerMonomialOrder = new Type of HashTable
 SchreyerMonomialOrder.synonym = "Schreyer monomial order"
 
 -- Install net method for SchreyerMonomialOrder
+net SchreyerMonomialOrder := S -> "<<Schreyer monomial order>>"||
+    "Source module: "|toString S.srcMod ||
+    "Target module: "|toString S.targMod ||
+    "Schreyer list: "|net S.schreyerList
 
 -- Verification method for SchreyerMonomialOrder
 verifyData SchreyerMonomialOrder := S -> (
@@ -20,12 +24,9 @@ verifyData SchreyerMonomialOrder := S -> (
     for i to #S.schreyerList - 1 do (
         elt := S.schreyerList#i;
         if not instance(elt, Vector) then error("Expected a Vector, instead got "|toString elt);
-
-        Width := widthOfElement elt;
-        freeOIMod := freeOIModuleFromElement elt;
-
-        if not class elt === getFreeModuleInWidth(freeOIMod, Width, VerifyData => false) then error("Element "|toString i|" of schreyerList does not belong to its specified free OI-module in width "|toString Width);
-        if not Width == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString S.srcMod.genWidths#i)
+        verifyData elt;
+        
+        if not (class elt).Width == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString (class elt).Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString S.srcMod.genWidths#i)
     )
 )
 
@@ -45,7 +46,7 @@ makeSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L)
 installSchreyerMonomialOrder = method(Options => {VerifyData => true})
 installSchreyerMonomialOrder SchreyerMonomialOrder := opts -> S -> (
     if opts.VerifyData then verifyData S;
-    S.srcMod.monOrder#0 = S
+    S.srcMod.monOrder#0 = S;
 )
 
 --------------------------------------------------------------------------------

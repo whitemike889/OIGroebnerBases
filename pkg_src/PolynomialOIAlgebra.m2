@@ -45,8 +45,8 @@ makePolynomialOIAlgebra(Ring, ZZ, Symbol) := opts -> (K, c, x) -> (
 -- OUTPUT: The index of x_(i,j) in the list of variables ordered so that in P_n we have x_(i,j) > x_(i',j') iff j > j' or j = j' and i > i'
 linearFromRowCol = method(TypicalValue => ZZ, Options => {VerifyData => true})
 linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := opts -> (P, n, i, j) -> (
-    if opts.VerifyData then scan({P, n}, verifyData);
     if n == 0 then return null;
+    if opts.VerifyData then scan({P, n}, verifyData);
     if i < 1 or i > P.varRows then error("Expected row between 1 and "|toString P.varRows|", instead got "|toString i);
     if j < 1 or j > n then error("Expected column between 1 and "|toString n|", instead got "|toString j);
 
@@ -115,9 +115,9 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := opts -> (P, f) -> (
 -- OUTPUT: A list of the elements in P(Hom(m, n))
 getInducedAlgebraMaps = method(TypicalValue => List, Options => {VerifyData => true})
 getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := opts -> (P, m, n) -> (
-    if opts.VerifyData then scan({P, m, n}, verifyData);
     if n < m then return {};
-
+    if opts.VerifyData then scan({P, m, n}, verifyData);
+    
     -- Get the maps
     ret := new List;
     oiMaps := getOIMaps(m, n);

@@ -63,7 +63,7 @@ verifyData OITerm := f -> (
     freeOIMod := f.basisIndex.freeOIMod;
     Width := f.basisIndex.oiMap.Width;
 
-    coeffs := ring getFreeModuleInWidth(freeOIMod, Width, VerifyData => false); -- Or getAlgebraInWidth(freeOIMod.polyOIAlg, Width);
+    coeffs := getAlgebraInWidth(freeOIMod.polyOIAlg, Width, VerifyData => false);
     if not class elt === coeffs then error("Expected element of "|toString coeffs|", instead got "|toString elt|" which is an element of "|class elt);
     if not #terms elt == 1 then error("Expected a term, instead got "|toString elt)
 )
@@ -119,6 +119,19 @@ OIMonomial ? OIMonomial := (f, g) -> (
     else error "Monomial order not supported"
 )
 
+-- PURPOSE: Get the monomial component of an OITerm
+-- INPUT: An OITerm 'f'
+-- OUTPUT: The OIMonomial part of f
+oiMonomialFromOITerm = method(TypicalValue => OIMonomial, Options => {VerifyData => true})
+oiMonomialFromOITerm OITerm := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    ringElement := f.ringElement / leadCoefficient f.ringElement;
+    makeOIMonomial(ringElement, f.basisIndex, VerifyData => false)
+)
+
+-- Comparison method for OITerm
+OITerm ? OITerm := (f, g) -> return oiMonomialFromOITerm(f, VerifyData => false) ? oiMonomialFromOITerm(g, VerifyData => false)
+
 -- Define the new type OIBasisElement
 -- COMMENT: Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
 OIBasisElement = new Type of OIMonomial
@@ -131,7 +144,7 @@ makeOIBasisElement = method(TypicalValue => OIBasisElement, Options => {VerifyDa
 makeOIBasisElement BasisIndex := opts -> b -> (
     if opts.VerifyData then verifyData b;
 
-    one := 1_(ring getFreeModuleInWidth(b.freeOIMod, b.oiMap.Width, VerifyData => false));
+    one := 1_(getAlgebraInWidth(b.freeOIMod.polyOIAlg, b.oiMap.Width, VerifyData => false));
     new OIBasisElement from makeOIMonomial(one, b, VerifyData => false)
 )
 
@@ -141,8 +154,42 @@ verifyData OIBasisElement := f -> (
 
     elt := f.ringElement;
     b := f.basisIndex;
-    one := 1_(ring getFreeModuleInWidth(b.freeOIMod, b.oiMap.Width, VerifyData => false));
+    one := 1_(getAlgebraInWidth(b.freeOIMod.polyOIAlg, b.oiMap.Width, VerifyData => false));
     if not elt === one then error("Expected ringElement = 1, instead got "|toString elt)
+)
+
+-- PURPOSE: Convert an element from vector form to a list of OITerms
+-- INPUT: A Vector 'v'
+-- OUTPUT: A List of OITerms corresponding to the terms of v sorted from greatest to least
+getOITermsFromVector = method(TypicalValue => List, Options => {VerifyData => true})
+getOITermsFromVector Vector := opts -> v -> (
+    if opts.VerifyData then verifyData v;
+
+    freeOIMod := (class v).freeOIMod;
+    Width := (class v).Width;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width, VerifyData => false);
+    termList := new List;
+    entryList := entries v;
+
+    for i to #entryList - 1 do (
+        if entryList#i == 0 then continue;
+
+        oiBasisElement := freeMod.oiBasisElements#i;
+        termList = append(termList, makeOITerm(entryList#i, oiBasisElement.basisIndex, VerifyData => false))
+    );
+
+    reverse sort termList
+)
+
+-- PURPOSE: Get the leading OITerm from a vector
+-- INPUT: A Vector 'v'
+-- OUTPUT: The largest OITerm in v
+leadOITerm = method(TypicalValue => OITerm, Options => {VerifyData => true})
+leadOITerm Vector := opts -> v -> (
+    if opts.VerifyData then verifyData v;
+    oiTerms := getOITermsFromVector(v, VerifyData => false);
+    if #oiTerms == 0 then return {};
+    oiTerms#0
 )
 
 --------------------------------------------------------------------------------

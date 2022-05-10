@@ -7,6 +7,9 @@
 FreeOIModule = new Type of HashTable
 FreeOIModule.synonym = "free OI-module"
 
+-- Install toString method for FreeOIModule
+toString FreeOIModule := F -> "genWidths = "|toString F.genWidths | ", degShifts = "|toString F.degShifts
+
 -- Install net method for FreeOIModule
 net FreeOIModule := F -> "Polynomial OI-algebra: "|toString F.polyOIAlg ||
     "Basis symbol: "|net F.basisSym ||
@@ -87,7 +90,15 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
         retHash := new MutableHashTable from alg^degList;
         retHash.Width = n;
         retHash.freeOIMod = F;
-        ret = new Module from retHash;
+        retHash.oiBasisElements = new List;
+        
+        -- Generate the OIBasisElements
+        for i to #F.genWidths - 1 do (
+            oiMaps := getOIMaps(F.genWidths#i, n);
+            for oiMap in oiMaps do retHash.oiBasisElements = append(retHash.oiBasisElements, makeOIBasisElement(makeBasisIndex(F, oiMap, i + 1, VerifyData => false), VerifyData => false))
+        );
+
+        ret = new Module from retHash
     );
 
     -- Store the module
@@ -99,26 +110,52 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 -- Subscript version of getFreeModuleInWidth
 FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
 
+-- Verification method for Vector
+verifyData Vector := f -> (
+    c := class f;
+    if not c.?Width then error("Element "|toString f|" has no key Width");
+    if not instance(c.Width, ZZ) then error("Expected type ZZ for Width, instead got type "|toString class c.Width);
+    verifyData c.Width;
+
+    if not c.?freeOIMod then error("Element "|toString f|" has no key freeOIMod");
+    if not instance(c.freeOIMod, FreeOIModule) then error("Expected type FreeOIModule for freeOIMod, instead got type "|toString class c.freeOIMod);
+    verifyData c.freeOIMod;
+
+    if not c === getFreeModuleInWidth(c.freeOIMod, c.Width, VerifyData => false) then error("Element "|toString f|" does not belong to its specified free OI-module in width "|toString c.Width)
+)
+
 -- PURPOSE: Get the width of an element
 -- INPUT: A Vector 'f'
 -- OUTPUT: The width of f
-widthOfElement = method(TypicalValue => ZZ)
-widthOfElement Vector := f -> (
-    c := class f;
-    if not c.?Width then error("Element "|toString f|" has no key Width");
-    if not instance(c.Width, ZZ) then error("Expected integer, instead got "|toString c.Width);
-    c.Width
+widthOfElement = method(TypicalValue => ZZ, Options => {VerifyData => true})
+widthOfElement Vector := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    (class f).Width
 )
 
 -- PURPOSE: Get the FreeOIModule containing an element
 -- INPUT: A Vector 'f'
 -- OUTPUT: The FreeOIModule containing f
-freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
-freeOIModuleFromElement Vector := f -> (
+freeOIModuleFromElement = method(TypicalValue => FreeOIModule, Options => {VerifyData => true})
+freeOIModuleFromElement Vector := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    (class f).freeOIMod
+)
+
+-- Install custom printing method for elements of free OI-modules
+oldNet = Vector # net -- Thanks to Paul Zinn-Justin for showing me this
+net Vector := f -> (
     c := class f;
-    if not c.?freeOIMod then error("Element "|toString f|" has no key freeOIMod");
-    if not instance(c.freeOIMod, FreeOIModule) then error("Expected FreeOIModule, instead got "|toString c.freeOIMod);
-    c.freeOIMod
+    if not (c.?freeOIMod and c.?Width) then return oldNet f;
+    verifyData f;
+
+    oiTerms := getOITermsFromVector(f, VerifyData => false);
+    if #oiTerms == 0 then return oldNet 0;
+    if #oiTerms == 1 then return oldNet oiTerms#0;
+    str := "";
+    for i to #oiTerms - 2 do str = str | net oiTerms#i | " + ";
+    str = str | net oiTerms#-1;
+    str
 )
 
 --------------------------------------------------------------------------------
