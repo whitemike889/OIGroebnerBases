@@ -124,6 +124,8 @@ export {
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
+    "installOIBasisElement",
+    "installOIBasisElements",
     "getInducedModuleMap",
     "getInducedModuleMaps",
 
@@ -159,9 +161,6 @@ verifyData ZZ := n -> if n < 0 then error("Expected a nonnegative integer, inste
 -- COMMENT: Should be of the form {Width => ZZ, assignment => List}
 OIMap = new Type of HashTable
 OIMap.synonym = "OI-map"
-
--- Install toString method for OIMap
-toString OIMap := f -> toString new List from {f.Width, f.assignment}
 
 -- Install net method for OIMap
 net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
@@ -404,7 +403,6 @@ makeSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L)
 
 -- PURPOSE: Install a SchreyerMonomialOrder on its source FreeOIModule
 -- INPUT: A SchreyerMonomialOrder 'S'
--- OUTPUT: Sets S.srcMod.monOrder#0 to S
 installSchreyerMonomialOrder = method(Options => {VerifyData => true})
 installSchreyerMonomialOrder SchreyerMonomialOrder := opts -> S -> (
     if opts.VerifyData then verifyData S;
@@ -469,6 +467,7 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 
 -- Define the new type BasisIndex
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
+-- COMMENT: idx should be between 1 and #freeOIMod.genWidths
 BasisIndex = new Type of HashTable
 BasisIndex.synonym = "basis index"
 
@@ -515,7 +514,7 @@ makeOITerm(RingElement, BasisIndex) := opts -> (elt, b) -> (
 )
 
 -- Install net method for OITerm
-net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap, f.basisIndex.idx)
+net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
 
 -- Verification method for OITerm
 verifyData OITerm := f -> (
@@ -702,6 +701,42 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 -- Subscript version of getFreeModuleInWidth
 FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
 
+-- PURPOSE: Install a basis element for user input
+installOIBasisElement = method(Options => {VerifyData => true})
+
+-- INPUT: '(F, n, f, i)', a FreeOIModule 'F', an integer 'n', a List 'f' and an index 'i'
+installOIBasisElement(FreeOIModule, ZZ, List, ZZ) := opts -> (F, n, f, i) -> installOIBasisElement(F, makeOIMap(n, f, VerifyData => false), i, VerifyData => opts.VerifyData)
+
+-- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
+installOIBasisElement(FreeOIModule, OIMap, ZZ) := opts -> (F, f, i) -> (
+    oiBasisElement := makeOIBasisElement(makeBasisIndex(F, f, i, VerifyData => false), VerifyData => opts.VerifyData);
+    installOIBasisElement(oiBasisElement, VerifyData => false)
+)
+
+-- INPUT: An OIBasisElement 'b'
+installOIBasisElement OIBasisElement := opts -> b -> (
+    if opts.VerifyData then verifyData b;
+    freeOIMod := b.basisIndex.freeOIMod;
+    Width := b.basisIndex.oiMap.Width;
+    fmod := getFreeModuleInWidth(freeOIMod, Width, VerifyData => false);
+    pos := position(fmod.oiBasisElements, elt -> elt === b);
+    if pos === null then error "Specified basis element does not exist";
+    freeOIMod.basisSym_(Width, b.basisIndex.oiMap.assignment, b.basisIndex.idx) <- fmod_pos;
+)
+
+-- PURPOSE: Install all OIBasisElements in a specified width
+-- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
+-- OUTPUT: Calls every installOIBasisElement() in F_n
+-- COMMENT: This method is very slow for large n
+installOIBasisElements = method(Options => {VerifyData => true})
+installOIBasisElements(FreeOIModule, ZZ) := opts -> (F, n) -> (
+    if opts.VerifyData then scan({F, n}, verifyData);
+    for i to #F.genWidths - 1 do (
+        oiMaps := getOIMaps(F.genWidths#i, n);
+        for oiMap in oiMaps do installOIBasisElement(F, oiMap, i + 1, VerifyData => false)
+    )
+)
+
 -- Verification method for Vector
 verifyData Vector := f -> (
     c := class f;
@@ -712,6 +747,10 @@ verifyData Vector := f -> (
     if not c.?freeOIMod then error("Element "|toString f|" has no key freeOIMod");
     if not instance(c.freeOIMod, FreeOIModule) then error("Expected type FreeOIModule for freeOIMod, instead got type "|toString class c.freeOIMod);
     verifyData c.freeOIMod;
+
+    if not c.?oiBasisElements then error("Element "|toString f|" has no key oiBasisElements");
+    if not instance(c.oiBasisElements, List) then error("Expected type List for oiBasisElements, instead got type "|toString class c.oiBasisElements);
+    for oiBasisElement in c.oiBasisElements do if not instance(oiBasisElement, OIBasisElement) then error("Expected a List of OIBasisElements, instead got "|toString c.oiBasisElements);
 
     if not c === getFreeModuleInWidth(c.freeOIMod, c.Width, VerifyData => false) then error("Element "|toString f|" does not belong to its specified free OI-module in width "|toString c.Width)
 )

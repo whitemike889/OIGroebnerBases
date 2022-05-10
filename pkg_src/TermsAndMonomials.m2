@@ -4,6 +4,7 @@
 
 -- Define the new type BasisIndex
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
+-- COMMENT: idx should be between 1 and #freeOIMod.genWidths
 BasisIndex = new Type of HashTable
 BasisIndex.synonym = "basis index"
 
@@ -50,7 +51,7 @@ makeOITerm(RingElement, BasisIndex) := opts -> (elt, b) -> (
 )
 
 -- Install net method for OITerm
-net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap, f.basisIndex.idx)
+net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
 
 -- Verification method for OITerm
 verifyData OITerm := f -> (

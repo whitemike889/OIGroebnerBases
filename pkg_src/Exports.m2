@@ -99,6 +99,8 @@ export {
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
+    "installOIBasisElement",
+    "installOIBasisElements",
     "getInducedModuleMap",
     "getInducedModuleMaps",
 

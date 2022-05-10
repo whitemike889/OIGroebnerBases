@@ -42,7 +42,6 @@ makeSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L)
 
 -- PURPOSE: Install a SchreyerMonomialOrder on its source FreeOIModule
 -- INPUT: A SchreyerMonomialOrder 'S'
--- OUTPUT: Sets S.srcMod.monOrder#0 to S
 installSchreyerMonomialOrder = method(Options => {VerifyData => true})
 installSchreyerMonomialOrder SchreyerMonomialOrder := opts -> S -> (
     if opts.VerifyData then verifyData S;

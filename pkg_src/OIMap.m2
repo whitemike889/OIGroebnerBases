@@ -10,9 +10,6 @@ verifyData ZZ := n -> if n < 0 then error("Expected a nonnegative integer, inste
 OIMap = new Type of HashTable
 OIMap.synonym = "OI-map"
 
--- Install toString method for OIMap
-toString OIMap := f -> toString new List from {f.Width, f.assignment}
-
 -- Install net method for OIMap
 net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
 
