@@ -1,15 +1,5 @@
 export {
     ------------------------------------
-    -- From OIModules.m2 ---------------
-    ------------------------------------
-
-    -- Methods
-    "verifyData",
-
-    -- Options
-    "VerifyData",
-
-    ------------------------------------
     -- From OIMap.m2 -------------------
     ------------------------------------
 
@@ -59,7 +49,7 @@ export {
     -- Keys
     "srcMod",
     "targMod",
-    "targElements",
+    "basisImage",
 
     ------------------------------------
     -- From TermsAndMonomials.m2 -------
@@ -68,15 +58,11 @@ export {
     -- Types
     "BasisIndex",
     "OITerm",
-    "OIMonomial",
-    "OIBasisElement",
 
     -- Methods
     "makeBasisIndex",
     "makeOITerm",
-    "makeOIMonomial",
-    "makeOIBasisElement",
-    "oiMonomialFromOITerm",
+    "makeBasisElement",
     "getOITermsFromVector",
     "leadOITerm",
 
@@ -93,6 +79,8 @@ export {
 
     -- Types
     "FreeOIModule",
+    "ModuleInWidth",
+    "VectorInWidth",
     "InducedModuleMap",
 
     -- Methods
@@ -101,8 +89,8 @@ export {
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
-    "installOIBasisElement",
-    "installOIBasisElements",
+    "installBasisElement",
+    "installBasisElements",
     "getInducedModuleMap",
     "getInducedModuleMaps",
 
@@ -116,6 +104,5 @@ export {
     "degShifts",
     "monOrder",
     "modules",
-    "oiBasisElements",
-    "basisImage"
+    "basisElements"
 }

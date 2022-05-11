@@ -31,7 +31,6 @@ load "Exports.m2"
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-verifyData = method()
 
 load "OIMap.m2"
 
@@ -69,5 +68,5 @@ f = x_(1,5)*(F_5)_10 + x_(1,3)^2*(F_5)_2;
 F_6;
 g = x_(1,6)*(F_6)_21;
 G = makeFreeOIModule(P, d, {5, 6});
-S = makeSchreyerMonomialOrder(F, G, {f, g});
+S = makeFreeOIModuleMap(F, G, {f, g});
 installSchreyerMonomialOrder S
