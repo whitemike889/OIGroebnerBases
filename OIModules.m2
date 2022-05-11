@@ -44,6 +44,7 @@ export {
     -- Methods
     "makeOIMap",
     "getOIMaps",
+    "composeOIMaps",
 
     -- Keys
     "Width",
@@ -71,20 +72,19 @@ export {
     "maps",
 
     ------------------------------------
-    -- From SchreyerMonomialOrder.m2 ---
+    -- From FreeOIModuleMap.m2 ---------
     ------------------------------------
 
     -- Types
-    "SchreyerMonomialOrder",
-
+    "FreeOIModuleMap",
+    
     -- Methods
-    "makeSchreyerMonomialOrder",
-    "installSchreyerMonomialOrder",
+    "makeFreeOIModuleMap",
 
     -- Keys
     "srcMod",
     "targMod",
-    "schreyerList",
+    "targElements",
 
     ------------------------------------
     -- From TermsAndMonomials.m2 -------
@@ -118,9 +118,11 @@ export {
 
     -- Types
     "FreeOIModule",
+    "InducedModuleMap",
 
     -- Methods
     "makeFreeOIModule",
+    "installSchreyerMonomialOrder",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
@@ -139,7 +141,8 @@ export {
     "degShifts",
     "monOrder",
     "modules",
-    "oiBasisElements"
+    "oiBasisElements",
+    "basisImage"
 }
 
 --------------------------------------------------------------------------------
@@ -202,6 +205,18 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
     for s in sets do ret = append(ret, makeOIMap(n, sort toList s, VerifyData => false));
 
     ret
+)
+
+-- PURPOSE: Compose two OI-maps
+-- INPUT: '(f, g)', an OIMap 'f' and an OIMap 'g'
+-- OUTPUT: The OIMap f(g)
+composeOIMaps = method(TypicalValue => OIMap, Options => {VerifyData => true})
+composeOIMaps(OIMap, OIMap) := opts -> (f, g) -> (
+    if opts.VerifyData then scan({f, g}, verifyData);
+    if not g.Width == #f.assignment then error "Maps cannot be composed due to incompatible source and target";
+    L := new List;
+    for i to #g.assignment - 1 do L = append(L, f.assignment#(g.assignment#i - 1));
+    makeOIMap(f.Width, L, VerifyData => false)
 )
 
 --------------------------------------------------------------------------------
@@ -353,64 +368,60 @@ FreeOIModule.synonym = "free OI-module"
 toString FreeOIModule := F -> "genWidths = "|toString F.genWidths | ", degShifts = "|toString F.degShifts
 
 -- Install net method for FreeOIModule
-net FreeOIModule := F -> "Polynomial OI-algebra: "|toString F.polyOIAlg ||
+net FreeOIModule := F -> (
+    local monOrderNet;
+    if F.monOrder#0 === Lex then monOrderNet = net Lex;
+    if instance(F.monOrder#0, FreeOIModuleMap) then monOrderNet = "Schreyer monomial order given by the FreeOIModuleMap: "|net F.monOrder#0;
+    "Polynomial OI-algebra: "|toString F.polyOIAlg ||
     "Basis symbol: "|net F.basisSym ||
     "Generator widths: "|net F.genWidths ||
     "Degree shifts: "|net F.degShifts ||
-    "Monomial order: "|net F.monOrder#0
-
---------------------------------------------------------------------------------
--- BEGIN: SchreyerMonomialOrder.m2 ---------------------------------------------
---------------------------------------------------------------------------------
-
--- Define the new type SchreyerMonomialOrder
--- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, schreyerList => List}
-SchreyerMonomialOrder = new Type of HashTable
-SchreyerMonomialOrder.synonym = "Schreyer monomial order"
-
--- Install net method for SchreyerMonomialOrder
-net SchreyerMonomialOrder := S -> "<<Schreyer monomial order>>"||
-    "Source module: "|toString S.srcMod ||
-    "Target module: "|toString S.targMod ||
-    "Schreyer list: "|net S.schreyerList
-
--- Verification method for SchreyerMonomialOrder
-verifyData SchreyerMonomialOrder := S -> (
-    if not sort keys S === sort {srcMod, targMod, schreyerList} then error("Expected keys {srcMod, targMod, schreyerList}, instead got "|toString keys S);
-    if not instance(S.srcMod, FreeOIModule) or not instance(S.targMod, FreeOIModule) then error("Expected type FreeOIModule for srcMod and targMod, instead got types "|toString class S.srcMod|" and "|toString class S.targMod);
-    if S.srcMod === S.targMod then error "srcMod cannot equal targMod";
-    scan({S.srcMod, S.targMod}, verifyData);
-    
-    if not instance(S.schreyerList, List) or #S.schreyerList == 0 then error("Expected nonempty List for schreyerList, instead got "|toString S.schreyerList);
-    for i to #S.schreyerList - 1 do (
-        elt := S.schreyerList#i;
-        if not instance(elt, Vector) then error("Expected a Vector, instead got "|toString elt);
-        verifyData elt;
-        
-        if not (class elt).Width == S.srcMod.genWidths#i then error("Element "|toString i|" of schreyerList has width "|toString (class elt).Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString S.srcMod.genWidths#i)
-    )
+    "Monomial order: "|monOrderNet
 )
 
--- PURPOSE: Make a new SchreyerMonomialOrder
--- INPUT: '(G, F, L)', a FreeOIModule 'G', a FreeOIModule 'F' and a  List 'L' of elements of G
--- OUTPUT: A SchreyerMonomialOrder made from G, F and L
-makeSchreyerMonomialOrder = method(TypicalValue => SchreyerMonomialOrder, Options => {VerifyData => true})
-makeSchreyerMonomialOrder(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L) -> (
-    ret := new SchreyerMonomialOrder from {targMod => G, srcMod => F, schreyerList => L};
+--------------------------------------------------------------------------------
+-- BEGIN: FreeOIModuleMap.m2 ---------------------------------------------------
+--------------------------------------------------------------------------------
+
+-- Define the new type FreeOIModuleMap
+-- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, targElements => List}
+FreeOIModuleMap = new Type of HashTable
+FreeOIModuleMap.synonym = "free OI-module map"
+
+-- Install net method for FreeOIModuleMap
+net FreeOIModuleMap := f -> "Source module: "|toString f.srcMod ||
+    "Target module: "|toString f.targMod ||
+    "Target elements: "|toString f.targElements
+
+-- PURPOSE: Make a new FreeOIModuleMap
+-- INPUT: '(G, F, L)', a target FreeOIModule 'G', a source FreeOIModule 'F' and a List 'L' of elements of G
+-- OUTPUT: A FreeOIModuleMap made from G, F and L
+makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap, Options => {VerifyData => true})
+makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := opts -> (G, F, L) -> (
+    ret := new FreeOIModuleMap from {srcMod => F, targMod => G, targElements => L};
     if opts.VerifyData then verifyData ret;
     ret
 )
 
--- PURPOSE: Install a SchreyerMonomialOrder on its source FreeOIModule
--- INPUT: A SchreyerMonomialOrder 'S'
-installSchreyerMonomialOrder = method(Options => {VerifyData => true})
-installSchreyerMonomialOrder SchreyerMonomialOrder := opts -> S -> (
-    if opts.VerifyData then verifyData S;
-    S.srcMod.monOrder#0 = S;
+-- Verifcation method for FreeOIModuleMap
+verifyData FreeOIModuleMap := f -> (
+    if not sort keys f === sort {srcMod, targMod, targElements} then error("Expected keys {srcMod, targMod, targElements}, instead got "|toString keys f);
+    if not instance(f.srcMod, FreeOIModule) or not instance(f.targMod, FreeOIModule) then error("Expected type FreeOIModule for srcMod and targMod, instead got types "|toString class f.srcMod|" and "|toString class f.targMod);
+    if f.srcMod === f.targMod then error "srcMod cannot equal targMod";
+    scan({f.srcMod, f.targMod}, verifyData);
+    
+    if not instance(f.targElements, List) or #f.targElements == 0 then error("Expected nonempty List for targElements, instead got "|toString f.targElements);
+    for i to #f.targElements - 1 do (
+        elt := f.targElements#i;
+        if not instance(elt, Vector) then error("Expected a Vector, instead got "|toString elt);
+        verifyData elt;
+        
+        if not (class elt).Width == f.srcMod.genWidths#i then error("Element "|toString i|" of targElements has width "|toString (class elt).Width|" which does not match srcMod.genWidths#"|toString i|" = "|toString f.srcMod.genWidths#i)
+    )
 )
 
 --------------------------------------------------------------------------------
--- END: SchreyerMonomialOrder.m2 -----------------------------------------------
+-- END: FreeOIModuleMap.m2 -----------------------------------------------------
 --------------------------------------------------------------------------------
 
 -- Verification method for FreeOIModule
@@ -431,7 +442,7 @@ verifyData FreeOIModule := F -> (
 
     if not #F.genWidths == #F.degShifts then error "Length of genWidths must equal length of degShifts";
     if not instance(F.monOrder, MutableList) or not #F.monOrder == 1 then error("Expected MutableList of length 1 for monOrder, instead got "|toString F.monOrder);
-    if not (F.monOrder#0 === Lex or instance(F.monOrder#0, SchreyerMonomialOrder)) then error("Expected either Lex or type SchreyerMonomialOrder for monOrder#0, instead got "|toString F.monOrder#0)
+    if not (F.monOrder#0 === Lex or instance(F.monOrder#0, FreeOIModuleMap)) then error("Expected either Lex or type FreeOIModuleMap for monOrder#0, instead got "|toString F.monOrder#0)
 )
 
 -- PURPOSE: Make a new FreeOIModule
@@ -459,6 +470,15 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     if opts.VerifyData then verifyData ret;
 
     ret
+)
+
+-- PURPOSE: Install a Schreyer monomial order on a FreeOIModule
+-- INPUT: A FreeOIModuleMap 'f'
+-- OUTPUT: Sets f.srcMod.monOrder#0 to f
+installSchreyerMonomialOrder = method(Options => {VerifyData => true})
+installSchreyerMonomialOrder FreeOIModuleMap := opts -> f -> (
+    if opts.VerifyData then verifyData f;
+    f.srcMod.monOrder#0 = f;
 )
 
 --------------------------------------------------------------------------------
@@ -577,7 +597,7 @@ OIMonomial ? OIMonomial := (f, g) -> (
         use class eltf; -- Note: since oiMapf.Width = oiMapg.Width we have class eltf = class eltg
         return eltf ? eltg
     )
-    else if instance(monOrder, SchreyerMonomialOrder) then ( -- SCHREYER ORDER
+    else if instance(monOrder, FreeOIModuleMap) then ( -- SCHREYER ORDER
         -- TODO: IMPLEMENT THIS
     )
     else error "Monomial order not supported"
@@ -702,6 +722,7 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := opts -> (F, n) -> (
 FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
 
 -- PURPOSE: Install a basis element for user input
+-- OUTPUT: Sets the desired IndexedVariable to the appropriate basis vector
 installOIBasisElement = method(Options => {VerifyData => true})
 
 -- INPUT: '(F, n, f, i)', a FreeOIModule 'F', an integer 'n', a List 'f' and an index 'i'
@@ -774,7 +795,8 @@ freeOIModuleFromElement Vector := opts -> f -> (
 )
 
 -- Install custom printing method for elements of free OI-modules
-oldNet = Vector # net -- Thanks to Paul Zinn-Justin for showing me this
+-- COMMENT: This should be improved eventually
+oldNet = Vector # net
 net Vector := f -> (
     c := class f;
     if not (c.?freeOIMod and c.?Width) then return oldNet f;
@@ -787,6 +809,53 @@ net Vector := f -> (
     for i to #oiTerms - 2 do str = str | net oiTerms#i | " + ";
     str = str | net oiTerms#-1;
     str
+)
+
+-- Define the new type InducedModuleMap
+-- COMMENT: Should be of the form {freeOIMod => FreeOIModule, basisImage => List, oiMap => OIMap}
+InducedModuleMap = new Type of HashTable
+InducedModuleMap.synonym = "induced module map"
+
+-- Verification method for InducedModuleMap
+verifyData InducedModuleMap := f -> (
+    if not sort keys f === sort {basisImage, freeOIMod, oiMap} then error("Expected keys {freeOIMod, matrix, oiMap}, instead got "|toString keys f);
+    if not instance(f.basisImage, List) then error("Expected type List for basisImage, instead got type "|toString class f.basisImage);
+    for elt in f.basisImage do if not instance(elt, Vector) then error("Expected a list of Vectors for basisImage, instead got "|toString f.basisImage);
+    if not instance(f.freeOIMod, FreeOIModule) then error("Expected type FreeOIModule for freeOIMod, instead got type "|toString class f.freeOIMod);
+    verifyData f.freeOIMod;
+    if not instance(f.oiMap, OIMap) then error("Expected type OIMap for oiMap, instead got type "|toString class f.oiMap);
+    verifyData oiMap
+)
+
+-- PURPOSE: Get the InducedModuleMap from a given OIMap
+-- INPUT: '(F, f)', a FreeOIModule 'F' and an OIMap 'f'
+-- OUTPUT: The map F(f)
+getInducedModuleMap = method(TypicalValue => InducedModuleMap, Options => {VerifyData => true})
+getInducedModuleMap(FreeOIModule, OIMap) := opts -> (F, f) -> (
+    if opts.VerifyData then scan({F, f}, verifyData);
+
+    -- Return the map if it already exists
+    if F.maps#?(f.Width, f.assignment) then return F.maps#(f.Width, f.assignment);
+
+    -- Generate the map
+    m := #f.assignment; n := f.Width;
+    fmodm := getFreeModuleInWidth(F, m, VerifyData => false);
+    fmodn := getFreeModuleInWidth(F, n, VerifyData => false);
+    oiBasisElementsm := fmodm.oiBasisElements; oiBasisElementsn := fmodn.oiBasisElements;
+    newOIBasisElements := new List;
+    for oiBasisElementm in oiBasisElementsm do (
+        newOIBasisElement := makeOIBasisElement(makeBasisIndex(F, composeOIMaps(f, oiBasisElementm.basisIndex.oiMap, VerifyData => false), oiBasisElementm.basisIndex.idx, VerifyData => false), VerifyData => false);
+        pos := position(oiBasisElementsn, elt -> elt === newOIBasisElement);
+        newOIBasisElements = append(newOIBasisElements, fmodn_pos)
+    );
+
+    -- Make the map
+    ret := new InducedModuleMap from {freeOIMod => F, basisImage => newOIBasisElements, oiMap => f};
+
+    -- Store the map
+    F.maps#(f.Width, f.assignment) = ret;
+
+    ret
 )
 
 --------------------------------------------------------------------------------

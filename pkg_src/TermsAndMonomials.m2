@@ -114,7 +114,7 @@ OIMonomial ? OIMonomial := (f, g) -> (
         use class eltf; -- Note: since oiMapf.Width = oiMapg.Width we have class eltf = class eltg
         return eltf ? eltg
     )
-    else if instance(monOrder, SchreyerMonomialOrder) then ( -- SCHREYER ORDER
+    else if instance(monOrder, FreeOIModuleMap) then ( -- SCHREYER ORDER
         -- TODO: IMPLEMENT THIS
     )
     else error "Monomial order not supported"

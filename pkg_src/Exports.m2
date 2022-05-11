@@ -19,6 +19,7 @@ export {
     -- Methods
     "makeOIMap",
     "getOIMaps",
+    "composeOIMaps",
 
     -- Keys
     "Width",
@@ -46,20 +47,19 @@ export {
     "maps",
 
     ------------------------------------
-    -- From SchreyerMonomialOrder.m2 ---
+    -- From FreeOIModuleMap.m2 ---------
     ------------------------------------
 
     -- Types
-    "SchreyerMonomialOrder",
-
+    "FreeOIModuleMap",
+    
     -- Methods
-    "makeSchreyerMonomialOrder",
-    "installSchreyerMonomialOrder",
+    "makeFreeOIModuleMap",
 
     -- Keys
     "srcMod",
     "targMod",
-    "schreyerList",
+    "targElements",
 
     ------------------------------------
     -- From TermsAndMonomials.m2 -------
@@ -93,9 +93,11 @@ export {
 
     -- Types
     "FreeOIModule",
+    "InducedModuleMap",
 
     -- Methods
     "makeFreeOIModule",
+    "installSchreyerMonomialOrder",
     "getFreeModuleInWidth",
     "freeOIModuleFromElement",
     "widthOfElement",
@@ -114,5 +116,6 @@ export {
     "degShifts",
     "monOrder",
     "modules",
-    "oiBasisElements"
+    "oiBasisElements",
+    "basisImage"
 }

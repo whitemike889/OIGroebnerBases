@@ -52,6 +52,18 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
     ret
 )
 
+-- PURPOSE: Compose two OI-maps
+-- INPUT: '(f, g)', an OIMap 'f' and an OIMap 'g'
+-- OUTPUT: The OIMap f(g)
+composeOIMaps = method(TypicalValue => OIMap, Options => {VerifyData => true})
+composeOIMaps(OIMap, OIMap) := opts -> (f, g) -> (
+    if opts.VerifyData then scan({f, g}, verifyData);
+    if not g.Width == #f.assignment then error "Maps cannot be composed due to incompatible source and target";
+    L := new List;
+    for i to #g.assignment - 1 do L = append(L, f.assignment#(g.assignment#i - 1));
+    makeOIMap(f.Width, L, VerifyData => false)
+)
+
 --------------------------------------------------------------------------------
 -- END: OIMap.m2 ---------------------------------------------------------------
 --------------------------------------------------------------------------------
