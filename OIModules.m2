@@ -350,6 +350,17 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
         maps => new MutableHashTable}
 )
 
+-- Define the new type ModuleInWidth
+-- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
+-- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
+ModuleInWidth = new Type of Module
+ModuleInWidth.synonym = "module in a specified width"
+
+-- Define the new type VectorInWidth
+-- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
+VectorInWidth = new Type of Vector
+VectorInWidth.synonym = "vector in a specified width"
+
 --------------------------------------------------------------------------------
 -- BEGIN: FreeOIModuleMap.m2 ---------------------------------------------------
 --------------------------------------------------------------------------------
@@ -376,6 +387,31 @@ target FreeOIModuleMap := f -> f.targMod
 makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
 makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImage => L}
 
+-- Install juxtaposition method for FreeOIModuleMap
+FreeOIModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := freeOIModuleFromElement v;
+    if not source f === freeOIMod then error "Element "|toString v|" does not belong to source of "|toString f;
+
+    Width := widthOfElement v;
+    oiTerms := getOITermsFromVector v;
+
+    if #oiTerms == 0 then return null;
+
+    newTerms := new List;
+    for oiTerm in oiTerms do (
+        ringElement := oiTerm.ringElement;
+        basisIndex := oiTerm.basisIndex;
+        oiMap := basisIndex.oiMap;
+        idx := basisIndex.idx;
+        inducedModuleMap := getInducedModuleMap(f.targMod, oiMap);
+        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImage#(idx - 1))) -- x*d_(pi,i) -> x*F(pi)(b_i)
+    );
+
+    ret := newTerms#0;
+    for i from 1 to #newTerms - 1 do ret = ret + ret#i;
+    ret
+)
+
 --------------------------------------------------------------------------------
 -- END: FreeOIModuleMap.m2 -----------------------------------------------------
 --------------------------------------------------------------------------------
@@ -386,21 +422,11 @@ makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOI
 installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
--- Define the new type ModuleInWidth
--- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
--- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
-ModuleInWidth = new Type of Module
-ModuleInWidth.synonym = "module in a specified width"
-
--- Define the new type VectorInWidth
--- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
-VectorInWidth = new Type of Vector
-VectorInWidth.synonym = "vector in a specified width"
-
 net VectorInWidth := f -> (
     oiTerms := getOITermsFromVector f;
     if #oiTerms == 0 then return net 0;
     if #oiTerms == 1 then return net oiTerms#0;
+    
     str := "";
     for i to #oiTerms - 2 do str = str|net oiTerms#i|" + ";
     str = str|net oiTerms#-1;
@@ -591,6 +617,7 @@ installBasisElement OITerm := b -> (
     Width := b.basisIndex.oiMap.Width;
     fmod := getFreeModuleInWidth(freeOIMod, Width);
     pos := position(fmod.basisElements, elt -> elt === b);
+
     if pos === null then error "Specified basis element does not exist";
     freeOIMod.basisSym_(Width, b.basisIndex.oiMap.assignment, b.basisIndex.idx) <- fmod_pos;
 )
@@ -687,6 +714,7 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIModFromVector := freeOIModuleFromElement v;
     if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
     if not source f === class v then error "Element "|toString v|" does not belong to source of "|toString f;
+
     algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
     newTerms := new List;
     for oiTerm in getOITermsFromVector v do (
@@ -696,6 +724,7 @@ InducedModuleMap VectorInWidth := (f, v) -> (
         newBasisIndex := f.assignment#basisIndex;
         newTerms = append(newTerms, makeOITerm(newRingElement, newBasisIndex))
     );
+    
     getVectorFromOITerms newTerms
 )
 
@@ -734,13 +763,19 @@ end
 
 -- Scratch work section
 
+restart
 load "OIModules.m2"
 P = makePolynomialOIAlgebra(QQ, 1, x);
 F = makeFreeOIModule(P, e, {2,3});
+installBasisElements(F, 5);
 F_5;
-f = x_(1,5)*(F_5)_10 + x_(1,3)^2*(F_5)_2;
+f = x_(1,5)*e_(5, {2,3}, 1) + x_(1,3)^2*e_(5, {1,3,4}, 2);
+installBasisElements(F, 6);
 F_6;
-g = x_(1,6)*(F_6)_21;
+g = x_(1,6)*e_(6, {1, 6}, 1) + x_(1,2)*e_(6, {2,4,6}, 2);
 G = makeFreeOIModule(P, d, {5, 6});
-S = makeFreeOIModuleMap(F, G, {f, g});
-installSchreyerMonomialOrder S
+phi = makeFreeOIModuleMap(F, G, {f, g});
+installBasisElements(G, 7);
+G_7;
+h = x_(1,7)*d_(7, {1, 3, 4, 5, 7}, 1);
+phi h -- x_(1,7) * F(pi)(f) where pi : 5 -> 7, so x_(1,7)*(x_(1,7)*e_(7,{3,4},1) +x_(1,4)^2*e_(7,{1,4,5}, 2))

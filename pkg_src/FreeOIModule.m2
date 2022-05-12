@@ -44,14 +44,6 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
         maps => new MutableHashTable}
 )
 
-load "FreeOIModuleMap.m2"
-
--- PURPOSE: Install a Schreyer monomial order on a FreeOIModule
--- INPUT: A FreeOIModuleMap 'f'
--- OUTPUT: Sets f.srcMod.monOrder#0 to f
-installSchreyerMonomialOrder = method()
-installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
-
 -- Define the new type ModuleInWidth
 -- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
 -- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
@@ -63,10 +55,19 @@ ModuleInWidth.synonym = "module in a specified width"
 VectorInWidth = new Type of Vector
 VectorInWidth.synonym = "vector in a specified width"
 
+load "FreeOIModuleMap.m2"
+
+-- PURPOSE: Install a Schreyer monomial order on a FreeOIModule
+-- INPUT: A FreeOIModuleMap 'f'
+-- OUTPUT: Sets f.srcMod.monOrder#0 to f
+installSchreyerMonomialOrder = method()
+installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
+
 net VectorInWidth := f -> (
     oiTerms := getOITermsFromVector f;
     if #oiTerms == 0 then return net 0;
     if #oiTerms == 1 then return net oiTerms#0;
+    
     str := "";
     for i to #oiTerms - 2 do str = str|net oiTerms#i|" + ";
     str = str|net oiTerms#-1;
@@ -134,6 +135,7 @@ installBasisElement OITerm := b -> (
     Width := b.basisIndex.oiMap.Width;
     fmod := getFreeModuleInWidth(freeOIMod, Width);
     pos := position(fmod.basisElements, elt -> elt === b);
+
     if pos === null then error "Specified basis element does not exist";
     freeOIMod.basisSym_(Width, b.basisIndex.oiMap.assignment, b.basisIndex.idx) <- fmod_pos;
 )

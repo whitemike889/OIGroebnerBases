@@ -63,6 +63,7 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIModFromVector := freeOIModuleFromElement v;
     if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
     if not source f === class v then error "Element "|toString v|" does not belong to source of "|toString f;
+
     algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
     newTerms := new List;
     for oiTerm in getOITermsFromVector v do (
@@ -72,6 +73,7 @@ InducedModuleMap VectorInWidth := (f, v) -> (
         newBasisIndex := f.assignment#basisIndex;
         newTerms = append(newTerms, makeOITerm(newRingElement, newBasisIndex))
     );
+    
     getVectorFromOITerms newTerms
 )
 

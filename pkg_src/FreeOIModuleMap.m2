@@ -24,6 +24,31 @@ target FreeOIModuleMap := f -> f.targMod
 makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
 makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImage => L}
 
+-- Install juxtaposition method for FreeOIModuleMap
+FreeOIModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := freeOIModuleFromElement v;
+    if not source f === freeOIMod then error "Element "|toString v|" does not belong to source of "|toString f;
+
+    Width := widthOfElement v;
+    oiTerms := getOITermsFromVector v;
+
+    if #oiTerms == 0 then return null;
+
+    newTerms := new List;
+    for oiTerm in oiTerms do (
+        ringElement := oiTerm.ringElement;
+        basisIndex := oiTerm.basisIndex;
+        oiMap := basisIndex.oiMap;
+        idx := basisIndex.idx;
+        inducedModuleMap := getInducedModuleMap(f.targMod, oiMap);
+        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImage#(idx - 1))) -- x*d_(pi,i) -> x*F(pi)(b_i)
+    );
+
+    ret := newTerms#0;
+    for i from 1 to #newTerms - 1 do ret = ret + ret#i;
+    ret
+)
+
 --------------------------------------------------------------------------------
 -- END: FreeOIModuleMap.m2 -----------------------------------------------------
 --------------------------------------------------------------------------------
