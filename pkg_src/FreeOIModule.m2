@@ -53,14 +53,25 @@ installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
 -- Define the new type ModuleInWidth
--- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and oiBasisElements => List
+-- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
+-- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
 ModuleInWidth = new Type of Module
 ModuleInWidth.synonym = "module in a specified width"
 
 -- Define the new type VectorInWidth
--- COMMENT: An instance v should have class v === (corresponding ModuleInWidth)
+-- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
 VectorInWidth = new Type of Vector
 VectorInWidth.synonym = "vector in a specified width"
+
+net VectorInWidth := f -> (
+    oiTerms := getOITermsFromVector f;
+    if #oiTerms == 0 then return net 0;
+    if #oiTerms == 1 then return net oiTerms#0;
+    str := "";
+    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + ";
+    str = str|net oiTerms#-1;
+    str
+)
 
 load "Terms.m2"
 
@@ -83,10 +94,10 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
     retHash.freeOIMod = F;
     retHash.basisElements = new List;
     
-    -- Generate the OIBasisElements
+    -- Generate the basis elements
     for i to #F.genWidths - 1 do (
         oiMaps := getOIMaps(F.genWidths#i, n);
-        for oiMap in oiMaps do retHash.basisElements = append(retHash.basisElements, makeBasisElement(makeBasisIndex(F, oiMap, i + 1)))
+        for oiMap in oiMaps do retHash.basisElements = append(retHash.basisElements, makeBasisElement makeBasisIndex(F, oiMap, i + 1))
     );
 
     ret := new ModuleInWidth of VectorInWidth from retHash;
@@ -98,7 +109,11 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
 )
 
 -- Subscript version of getFreeModuleInWidth
-FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
+FreeOIModule _ ZZ := (F, n) -> (
+    freeMod := getFreeModuleInWidth(F, n);
+    use ring freeMod;
+    freeMod
+)
 
 -- PURPOSE: Install a basis element for user input
 -- OUTPUT: Sets the desired IndexedVariable to the appropriate basis vector
@@ -109,7 +124,7 @@ installBasisElement(FreeOIModule, ZZ, List, ZZ) := (F, n, f, i) -> installBasisE
 
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 installBasisElement(FreeOIModule, OIMap, ZZ) := (F, f, i) -> (
-    basisElement := makeBasisElement(makeBasisIndex(F, f, i));
+    basisElement := makeBasisElement makeBasisIndex(F, f, i);
     installBasisElement basisElement
 )
 

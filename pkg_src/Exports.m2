@@ -26,7 +26,7 @@ export {
     "makePolynomialOIAlgebra",
     "getAlgebraInWidth",
     "linearFromRowCol",
-    "algebraMapFromOIMap",
+    "getInducedAlgebraMap",
     "getInducedAlgebraMaps",
 
     -- Keys
@@ -49,7 +49,7 @@ export {
     -- Keys
     "srcMod",
     "targMod",
-    "basisImage",
+    "genImage",
 
     ------------------------------------
     -- From TermsAndMonomials.m2 -------
@@ -65,6 +65,7 @@ export {
     "makeBasisElement",
     "getOITermsFromVector",
     "leadOITerm",
+    "getVectorFromOITerms",
 
     -- Keys
     "freeOIMod",
@@ -81,7 +82,6 @@ export {
     "FreeOIModule",
     "ModuleInWidth",
     "VectorInWidth",
-    "InducedModuleMap",
 
     -- Methods
     "makeFreeOIModule",
@@ -91,8 +91,6 @@ export {
     "widthOfElement",
     "installBasisElement",
     "installBasisElements",
-    "getInducedModuleMap",
-    "getInducedModuleMaps",
 
     -- Options
     "DegreeShifts",
@@ -104,5 +102,16 @@ export {
     "degShifts",
     "monOrder",
     "modules",
-    "basisElements"
+    "basisElements",
+
+    ------------------------------------
+    -- From InducedModuleMap.m2 --------
+    ------------------------------------
+
+    -- Types
+    "InducedModuleMap",
+
+    -- Methods
+    "getInducedModuleMap",
+    "getInducedModuleMaps"
 }

@@ -7,6 +7,8 @@
 BasisIndex = new Type of HashTable
 BasisIndex.synonym = "basis index"
 
+net BasisIndex := b -> net makeBasisElement b
+
 -- PURPOSE: Make a new BasisIndex
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 -- OUTPUT: A BasisIndex made from F, f and i
@@ -24,8 +26,12 @@ OITerm.synonym = "OI-term"
 makeOITerm = method(TypicalValue => OITerm)
 makeOITerm(RingElement, BasisIndex) := (elt, b) -> new OITerm from {ringElement => elt, basisIndex => b}
 
--- Install net method for OITerm
-net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
+net OITerm := f -> (
+    local ringElementNet;
+    if #terms f.ringElement == 1 then ringElementNet = net f.ringElement
+    else ringElementNet = "("|net f.ringElement|")";
+    ringElementNet | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
+)
 
 -- Comparison method for OITerm
 OITerm ? OITerm := (f, g) -> (
@@ -82,6 +88,25 @@ getOITermsFromVector VectorInWidth := f -> (
     );
 
     reverse sort termList
+)
+
+-- PURPOSE: Convert an element from a list of OITerms to vector form
+-- INPUT: A List 'L' of OITerms
+-- OUTPUT: A VectorInWidth made from L
+getVectorFromOITerms = method(TypicalValue => VectorInWidth)
+getVectorFromOITerms List := L -> (
+    if #L == 0 then return null;
+    Width := (L#0).basisIndex.oiMap.Width;
+    freeOIMod := (L#0).basisIndex.freeOIMod;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width);
+    vect := 0_freeMod;
+    for oiTerm in L do (
+        ringElement := oiTerm.ringElement;
+        basisElement := makeBasisElement oiTerm.basisIndex;
+        pos := position(freeMod.basisElements, elt -> elt === basisElement);
+        vect = vect + ringElement * freeMod_pos
+    );
+    vect
 )
 
 -- PURPOSE: Get the leading OITerm from a vector

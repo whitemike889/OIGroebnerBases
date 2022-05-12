@@ -51,7 +51,7 @@ export {
     "makePolynomialOIAlgebra",
     "getAlgebraInWidth",
     "linearFromRowCol",
-    "algebraMapFromOIMap",
+    "getInducedAlgebraMap",
     "getInducedAlgebraMaps",
 
     -- Keys
@@ -74,7 +74,7 @@ export {
     -- Keys
     "srcMod",
     "targMod",
-    "basisImage",
+    "genImage",
 
     ------------------------------------
     -- From TermsAndMonomials.m2 -------
@@ -90,6 +90,7 @@ export {
     "makeBasisElement",
     "getOITermsFromVector",
     "leadOITerm",
+    "getVectorFromOITerms",
 
     -- Keys
     "freeOIMod",
@@ -106,7 +107,6 @@ export {
     "FreeOIModule",
     "ModuleInWidth",
     "VectorInWidth",
-    "InducedModuleMap",
 
     -- Methods
     "makeFreeOIModule",
@@ -116,8 +116,6 @@ export {
     "widthOfElement",
     "installBasisElement",
     "installBasisElements",
-    "getInducedModuleMap",
-    "getInducedModuleMaps",
 
     -- Options
     "DegreeShifts",
@@ -129,7 +127,18 @@ export {
     "degShifts",
     "monOrder",
     "modules",
-    "basisElements"
+    "basisElements",
+
+    ------------------------------------
+    -- From InducedModuleMap.m2 --------
+    ------------------------------------
+
+    -- Types
+    "InducedModuleMap",
+
+    -- Methods
+    "getInducedModuleMap",
+    "getInducedModuleMaps"
 }
 
 --------------------------------------------------------------------------------
@@ -137,7 +146,6 @@ export {
 -- BODY ------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
-
 
 --------------------------------------------------------------------------------
 -- BEGIN: OIMap.m2 -------------------------------------------------------------
@@ -147,6 +155,8 @@ export {
 -- COMMENT: Should be of the form {Width => ZZ, assignment => List}
 OIMap = new Type of HashTable
 OIMap.synonym = "OI-map"
+
+toString OIMap := f -> "width => "|toString f.Width|", assignment => "|toString f.assignment
 
 net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
 
@@ -345,15 +355,17 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 --------------------------------------------------------------------------------
 
 -- Define the new type FreeOIModuleMap
--- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, basisImage => List}
+-- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, genImage => List}
+-- COMMENT: genImage should be a list of the images of the generators of srcMod
+-- COMMENT: The order of genImage matters, i.e. genImage#i should correspond to srcMod.genWidths#i
 FreeOIModuleMap = new Type of HashTable
 FreeOIModuleMap.synonym = "free OI-module map"
 
-toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", basis image => "|toString f.basisImage
+toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", generator image => "|toString f.genImage
 
 net FreeOIModuleMap := f -> "Source module: "|toString f.srcMod ||
     "Target module: "|toString f.targMod ||
-    "Basis image: "|toString f.basisImage
+    "Generator image: "|toString f.genImage
 
 source FreeOIModuleMap := f -> f.srcMod
 target FreeOIModuleMap := f -> f.targMod
@@ -362,7 +374,7 @@ target FreeOIModuleMap := f -> f.targMod
 -- INPUT: '(G, F, L)', a target FreeOIModule 'G', a source FreeOIModule 'F' and a List 'L' of elements of G
 -- OUTPUT: A FreeOIModuleMap made from G, F and L
 makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
-makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, basisImage => L}
+makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImage => L}
 
 --------------------------------------------------------------------------------
 -- END: FreeOIModuleMap.m2 -----------------------------------------------------
@@ -375,14 +387,25 @@ installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
 -- Define the new type ModuleInWidth
--- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and oiBasisElements => List
+-- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
+-- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
 ModuleInWidth = new Type of Module
 ModuleInWidth.synonym = "module in a specified width"
 
 -- Define the new type VectorInWidth
--- COMMENT: An instance v should have class v === (corresponding ModuleInWidth)
+-- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
 VectorInWidth = new Type of Vector
 VectorInWidth.synonym = "vector in a specified width"
+
+net VectorInWidth := f -> (
+    oiTerms := getOITermsFromVector f;
+    if #oiTerms == 0 then return net 0;
+    if #oiTerms == 1 then return net oiTerms#0;
+    str := "";
+    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + ";
+    str = str|net oiTerms#-1;
+    str
+)
 
 --------------------------------------------------------------------------------
 -- BEGIN: Terms.m2 -------------------------------------------------------------
@@ -392,6 +415,8 @@ VectorInWidth.synonym = "vector in a specified width"
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
 BasisIndex = new Type of HashTable
 BasisIndex.synonym = "basis index"
+
+net BasisIndex := b -> net makeBasisElement b
 
 -- PURPOSE: Make a new BasisIndex
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
@@ -410,8 +435,12 @@ OITerm.synonym = "OI-term"
 makeOITerm = method(TypicalValue => OITerm)
 makeOITerm(RingElement, BasisIndex) := (elt, b) -> new OITerm from {ringElement => elt, basisIndex => b}
 
--- Install net method for OITerm
-net OITerm := f -> net f.ringElement | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
+net OITerm := f -> (
+    local ringElementNet;
+    if #terms f.ringElement == 1 then ringElementNet = net f.ringElement
+    else ringElementNet = "("|net f.ringElement|")";
+    ringElementNet | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
+)
 
 -- Comparison method for OITerm
 OITerm ? OITerm := (f, g) -> (
@@ -470,6 +499,25 @@ getOITermsFromVector VectorInWidth := f -> (
     reverse sort termList
 )
 
+-- PURPOSE: Convert an element from a list of OITerms to vector form
+-- INPUT: A List 'L' of OITerms
+-- OUTPUT: A VectorInWidth made from L
+getVectorFromOITerms = method(TypicalValue => VectorInWidth)
+getVectorFromOITerms List := L -> (
+    if #L == 0 then return null;
+    Width := (L#0).basisIndex.oiMap.Width;
+    freeOIMod := (L#0).basisIndex.freeOIMod;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width);
+    vect := 0_freeMod;
+    for oiTerm in L do (
+        ringElement := oiTerm.ringElement;
+        basisElement := makeBasisElement oiTerm.basisIndex;
+        pos := position(freeMod.basisElements, elt -> elt === basisElement);
+        vect = vect + ringElement * freeMod_pos
+    );
+    vect
+)
+
 -- PURPOSE: Get the leading OITerm from a vector
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: The largest OITerm in f
@@ -503,10 +551,10 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
     retHash.freeOIMod = F;
     retHash.basisElements = new List;
     
-    -- Generate the OIBasisElements
+    -- Generate the basis elements
     for i to #F.genWidths - 1 do (
         oiMaps := getOIMaps(F.genWidths#i, n);
-        for oiMap in oiMaps do retHash.basisElements = append(retHash.basisElements, makeBasisElement(makeBasisIndex(F, oiMap, i + 1)))
+        for oiMap in oiMaps do retHash.basisElements = append(retHash.basisElements, makeBasisElement makeBasisIndex(F, oiMap, i + 1))
     );
 
     ret := new ModuleInWidth of VectorInWidth from retHash;
@@ -518,7 +566,11 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
 )
 
 -- Subscript version of getFreeModuleInWidth
-FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
+FreeOIModule _ ZZ := (F, n) -> (
+    freeMod := getFreeModuleInWidth(F, n);
+    use ring freeMod;
+    freeMod
+)
 
 -- PURPOSE: Install a basis element for user input
 -- OUTPUT: Sets the desired IndexedVariable to the appropriate basis vector
@@ -529,7 +581,7 @@ installBasisElement(FreeOIModule, ZZ, List, ZZ) := (F, n, f, i) -> installBasisE
 
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 installBasisElement(FreeOIModule, OIMap, ZZ) := (F, f, i) -> (
-    basisElement := makeBasisElement(makeBasisIndex(F, f, i));
+    basisElement := makeBasisElement makeBasisIndex(F, f, i);
     installBasisElement basisElement
 )
 
@@ -568,6 +620,87 @@ freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
 
 --------------------------------------------------------------------------------
 -- END: FreeOIModule.m2 --------------------------------------------------------
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- BEGIN: InducedModuleMap.m2 --------------------------------------------------
+--------------------------------------------------------------------------------
+
+-- Define the new type InducedModuleMap
+-- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, assignment => HashTable}
+-- COMMENT: assignment should specify how a BasisIndex in the source free module gets mapped to a basis index in the target free module
+InducedModuleMap = new Type of HashTable
+InducedModuleMap.synonym = "induced module map"
+
+net InducedModuleMap := f -> "Source module: "|net source f ||
+    "Target module: "|net target f ||
+    "OI-map: "|toString f.oiMap ||
+    "Assignment: "|net f.assignment
+
+source InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, #f.oiMap.assignment)
+target InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, f.oiMap.Width)
+
+-- PURPOSE: Get the module map induced by an OI-map
+-- INPUT: '(F, f)', a FreeOIModule 'F' and an OIMap 'f'
+-- OUTPUT: The map F(f)
+getInducedModuleMap = method(TypicalValue => InducedModuleMap)
+getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
+    -- Return the map if it already exists
+    if F.maps#?(f.Width, f.assignment) then return F.maps#(f.Width, f.assignment);
+
+    -- Generate the assignment
+    m := #f.assignment;
+    n := f.Width;
+    fmodm := getFreeModuleInWidth(F, m);
+    fmodn := getFreeModuleInWidth(F, n);
+    basisElementsm := fmodm.basisElements;
+    basisElementsn := fmodn.basisElements;
+    mutableAssignment := new MutableHashTable;
+    for basisElementm in basisElementsm do (
+        newBasisIndex := makeBasisIndex(F, composeOIMaps(f, basisElementm.basisIndex.oiMap), basisElementm.basisIndex.idx);
+        mutableAssignment#(basisElementm.basisIndex) = newBasisIndex
+    );
+
+    -- Make the map
+    ret := new InducedModuleMap from {freeOIMod => F, oiMap => f, assignment => new HashTable from mutableAssignment};
+
+    -- Store the map
+    F.maps#(f.Width, f.assignment) = ret;
+
+    ret
+)
+
+-- PURPOSE: Get the induced module maps between two widths
+-- INPUT: '(F, m, n)', a FreeOIModule 'F', a width 'm' and a width 'n'
+-- OUTPUT: A List of the elements in F(Hom(m,n))
+getInducedModuleMaps = method(TypicalValue => List)
+getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
+    oiMaps := getOIMaps(m, n);
+    ret := new List;
+    for oiMap in oiMaps do ret = append(ret, getInducedModuleMap(F, oiMap));
+    ret
+)
+
+-- Install juxtaposition method for InducedModuleMap
+InducedModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := f.freeOIMod;
+    freeOIModFromVector := freeOIModuleFromElement v;
+    if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
+    if not source f === class v then error "Element "|toString v|" does not belong to source of "|toString f;
+    algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
+    newTerms := new List;
+    for oiTerm in getOITermsFromVector v do (
+        ringElement := oiTerm.ringElement;
+        basisIndex := oiTerm.basisIndex;
+        newRingElement := algMap ringElement;
+        newBasisIndex := f.assignment#basisIndex;
+        newTerms = append(newTerms, makeOITerm(newRingElement, newBasisIndex))
+    );
+    getVectorFromOITerms newTerms
+)
+
+--------------------------------------------------------------------------------
+-- END: InducedModuleMap.m2 ----------------------------------------------------
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------

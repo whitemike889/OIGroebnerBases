@@ -7,6 +7,8 @@
 OIMap = new Type of HashTable
 OIMap.synonym = "OI-map"
 
+toString OIMap := f -> "width => "|toString f.Width|", assignment => "|toString f.assignment
+
 net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
 
 source OIMap := f -> toList(1..#f.assignment)
