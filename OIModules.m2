@@ -6,7 +6,7 @@
 -- COMMENT: This package was made using Macaulay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
 newPackage("OIModules",
-    Headline => "Computation in OI-modules over Noetherian OI-algebras",
+    Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
     Version => "0.1",
     Date => "April 4, 2022", -- Project birthday
     Keywords => { "Commutative Algebra" },
@@ -19,7 +19,7 @@ newPackage("OIModules",
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
--- EXPORTS ---------------------------------------------------------------------
+-- EXPORT AND PROTECT ----------------------------------------------------------
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -32,13 +32,7 @@ export {
     "OIMap",
 
     -- Methods
-    "makeOIMap",
-    "getOIMaps",
-    "composeOIMaps",
-
-    -- Keys
-    "Width",
-    "assignment",
+    "makeOIMap", "getOIMaps", "composeOIMaps",
 
     ------------------------------------
     -- From PolynomialOIAlgebra.m2 -----
@@ -48,18 +42,7 @@ export {
     "PolynomialOIAlgebra",
 
     -- Methods
-    "makePolynomialOIAlgebra",
-    "getAlgebraInWidth",
-    "linearFromRowCol",
-    "getInducedAlgebraMap",
-    "getInducedAlgebraMaps",
-
-    -- Keys
-    "varRows",
-    "varSym",
-    "algebras",
-    "baseField",
-    "maps",
+    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps",
 
     ------------------------------------
     -- From FreeOIModuleMap.m2 ---------
@@ -71,63 +54,28 @@ export {
     -- Methods
     "makeFreeOIModuleMap",
 
-    -- Keys
-    "srcMod",
-    "targMod",
-    "genImage",
-
     ------------------------------------
-    -- From TermsAndMonomials.m2 -------
+    -- From Terms.m2 -------------------
     ------------------------------------
 
     -- Types
-    "BasisIndex",
-    "OITerm",
+    "BasisIndex", "OITerm",
 
     -- Methods
-    "makeBasisIndex",
-    "makeOITerm",
-    "makeBasisElement",
-    "getOITermsFromVector",
-    "leadOITerm",
-    "getVectorFromOITerms",
-
-    -- Keys
-    "freeOIMod",
-    "idx",
-    "oiMap",
-    "ringElement",
-    "basisIndex",
+    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "leadOITerm", "getVectorFromOITerms",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
     ------------------------------------
 
     -- Types
-    "FreeOIModule",
-    "ModuleInWidth",
-    "VectorInWidth",
+    "FreeOIModule", "VectorInWidth", "ModuleInWidth",
 
     -- Methods
-    "makeFreeOIModule",
-    "installSchreyerMonomialOrder",
-    "getFreeModuleInWidth",
-    "freeOIModuleFromElement",
-    "widthOfElement",
-    "installBasisElement",
-    "installBasisElements",
+    "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements",
 
     -- Options
     "DegreeShifts",
-
-    -- Keys
-    "polyOIAlg",
-    "basisSym",
-    "genWidths",
-    "degShifts",
-    "monOrder",
-    "modules",
-    "basisElements",
 
     ------------------------------------
     -- From InducedModuleMap.m2 --------
@@ -137,9 +85,46 @@ export {
     "InducedModuleMap",
 
     -- Methods
-    "getInducedModuleMap",
-    "getInducedModuleMaps"
+    "getInducedModuleMap", "getInducedModuleMaps"
 }
+
+scan({
+    ------------------------------------
+    -- From OIMap.m2 -------------------
+    ------------------------------------
+
+    -- Keys
+    Width, assignment,
+
+    ------------------------------------
+    -- From PolynomialOIAlgebra.m2 -----
+    ------------------------------------
+
+    -- Keys
+    varRows, varSym, algebras, baseField, maps,
+
+    ------------------------------------
+    -- From FreeOIModuleMap.m2 ---------
+    ------------------------------------
+
+    -- Keys
+    srcMod, targMod, genImage,
+
+    ------------------------------------
+    -- From Terms.m2 -------------------
+    ------------------------------------
+
+    -- Keys
+    freeOIMod, idx, oiMap, ringElement, basisIndex,
+
+    ------------------------------------
+    -- From FreeOIModule.m2 ------------
+    ------------------------------------
+
+    -- Keys
+    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, basisElements
+
+}, protect)
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -257,7 +242,11 @@ getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := (P, n) -> (
 )
 
 -- PURPOSE: Subscript version of getAlgebraInWidth
-PolynomialOIAlgebra _ ZZ := (P, n) -> getAlgebraInWidth(P, n)
+PolynomialOIAlgebra _ ZZ := (P, n) -> (
+    alg := getAlgebraInWidth(P, n);
+    use alg;
+    alg
+)
 
 -- PURPOSE: Get the algebra map induced by an OI-map
 -- INPUT: '(P, f)', a PolynomialOIAlgebra 'P' and an OIMap 'f'
@@ -267,7 +256,7 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     -- Return the map if it already exists
     if P.maps#?(f.Width, f.assignment) then return P.maps#(f.Width, f.assignment);
     
-    -- Generate the map
+    -- Generate the assignment
     m := #f.assignment;
     n := f.Width;
     src := getAlgebraInWidth(P, m);
@@ -390,13 +379,14 @@ makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOI
 -- Install juxtaposition method for FreeOIModuleMap
 FreeOIModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := freeOIModuleFromElement v;
-    if not source f === freeOIMod then error "Element "|toString v|" does not belong to source of "|toString f;
+    if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
 
     Width := widthOfElement v;
     oiTerms := getOITermsFromVector v;
 
     if #oiTerms == 0 then return null;
 
+    -- Generate the new terms
     newTerms := new List;
     for oiTerm in oiTerms do (
         ringElement := oiTerm.ringElement;
@@ -404,9 +394,10 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
         oiMap := basisIndex.oiMap;
         idx := basisIndex.idx;
         inducedModuleMap := getInducedModuleMap(f.targMod, oiMap);
-        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImage#(idx - 1))) -- x*d_(pi,i) -> x*F(pi)(b_i)
+        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImage#(idx - 1))) -- x*d_(pi,i) ---> x*F(pi)(b_i)
     );
 
+    -- Sum the terms up
     ret := newTerms#0;
     for i from 1 to #newTerms - 1 do ret = ret + ret#i;
     ret
@@ -535,12 +526,14 @@ getVectorFromOITerms List := L -> (
     freeOIMod := (L#0).basisIndex.freeOIMod;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
     vect := 0_freeMod;
+
     for oiTerm in L do (
         ringElement := oiTerm.ringElement;
         basisElement := makeBasisElement oiTerm.basisIndex;
         pos := position(freeMod.basisElements, elt -> elt === basisElement);
         vect = vect + ringElement * freeMod_pos
     );
+    
     vect
 )
 
@@ -713,7 +706,7 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := f.freeOIMod;
     freeOIModFromVector := freeOIModuleFromElement v;
     if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
-    if not source f === class v then error "Element "|toString v|" does not belong to source of "|toString f;
+    if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
 
     algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
     newTerms := new List;
@@ -778,4 +771,5 @@ phi = makeFreeOIModuleMap(F, G, {f, g});
 installBasisElements(G, 7);
 G_7;
 h = x_(1,7)*d_(7, {1, 3, 4, 5, 7}, 1);
-phi h -- x_(1,7) * F(pi)(f) where pi : 5 -> 7, so x_(1,7)*(x_(1,7)*e_(7,{3,4},1) +x_(1,4)^2*e_(7,{1,4,5}, 2))
+installBasisElements(F, 7);
+assert(phi h === x_(1,7)*(x_(1,7)*e_(7,{3,4},1)+x_(1,4)^2*e_(7,{1,4,5},2)))

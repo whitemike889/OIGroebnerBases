@@ -6,7 +6,7 @@
 -- COMMENT: This package was made using Macaulay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
 newPackage("OIModules",
-    Headline => "Computation in OI-modules over Noetherian OI-algebras",
+    Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
     Version => "0.1",
     Date => "April 4, 2022", -- Project birthday
     Keywords => { "Commutative Algebra" },
@@ -19,11 +19,11 @@ newPackage("OIModules",
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
--- EXPORTS ---------------------------------------------------------------------
+-- EXPORT AND PROTECT ----------------------------------------------------------
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-load "Exports.m2"
+load "ExportAndProtect.m2"
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -76,4 +76,5 @@ phi = makeFreeOIModuleMap(F, G, {f, g});
 installBasisElements(G, 7);
 G_7;
 h = x_(1,7)*d_(7, {1, 3, 4, 5, 7}, 1);
-phi h -- x_(1,7) * F(pi)(f) where pi : 5 -> 7, so x_(1,7)*(x_(1,7)*e_(7,{3,4},1) +x_(1,4)^2*e_(7,{1,4,5}, 2))
+installBasisElements(F, 7);
+assert(phi h === x_(1,7)*(x_(1,7)*e_(7,{3,4},1)+x_(1,4)^2*e_(7,{1,4,5},2)))

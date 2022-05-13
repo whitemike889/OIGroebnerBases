@@ -59,7 +59,11 @@ getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := (P, n) -> (
 )
 
 -- PURPOSE: Subscript version of getAlgebraInWidth
-PolynomialOIAlgebra _ ZZ := (P, n) -> getAlgebraInWidth(P, n)
+PolynomialOIAlgebra _ ZZ := (P, n) -> (
+    alg := getAlgebraInWidth(P, n);
+    use alg;
+    alg
+)
 
 -- PURPOSE: Get the algebra map induced by an OI-map
 -- INPUT: '(P, f)', a PolynomialOIAlgebra 'P' and an OIMap 'f'
@@ -69,7 +73,7 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     -- Return the map if it already exists
     if P.maps#?(f.Width, f.assignment) then return P.maps#(f.Width, f.assignment);
     
-    -- Generate the map
+    -- Generate the assignment
     m := #f.assignment;
     n := f.Width;
     src := getAlgebraInWidth(P, m);

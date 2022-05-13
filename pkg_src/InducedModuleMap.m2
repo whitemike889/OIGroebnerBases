@@ -62,7 +62,7 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := f.freeOIMod;
     freeOIModFromVector := freeOIModuleFromElement v;
     if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
-    if not source f === class v then error "Element "|toString v|" does not belong to source of "|toString f;
+    if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
 
     algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
     newTerms := new List;

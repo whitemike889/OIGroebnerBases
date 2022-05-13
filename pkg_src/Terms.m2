@@ -100,12 +100,14 @@ getVectorFromOITerms List := L -> (
     freeOIMod := (L#0).basisIndex.freeOIMod;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
     vect := 0_freeMod;
+
     for oiTerm in L do (
         ringElement := oiTerm.ringElement;
         basisElement := makeBasisElement oiTerm.basisIndex;
         pos := position(freeMod.basisElements, elt -> elt === basisElement);
         vect = vect + ringElement * freeMod_pos
     );
+    
     vect
 )
 

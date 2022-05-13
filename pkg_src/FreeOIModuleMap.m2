@@ -27,13 +27,14 @@ makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOI
 -- Install juxtaposition method for FreeOIModuleMap
 FreeOIModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := freeOIModuleFromElement v;
-    if not source f === freeOIMod then error "Element "|toString v|" does not belong to source of "|toString f;
+    if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
 
     Width := widthOfElement v;
     oiTerms := getOITermsFromVector v;
 
     if #oiTerms == 0 then return null;
 
+    -- Generate the new terms
     newTerms := new List;
     for oiTerm in oiTerms do (
         ringElement := oiTerm.ringElement;
@@ -41,9 +42,10 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
         oiMap := basisIndex.oiMap;
         idx := basisIndex.idx;
         inducedModuleMap := getInducedModuleMap(f.targMod, oiMap);
-        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImage#(idx - 1))) -- x*d_(pi,i) -> x*F(pi)(b_i)
+        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImage#(idx - 1))) -- x*d_(pi,i) ---> x*F(pi)(b_i)
     );
 
+    -- Sum the terms up
     ret := newTerms#0;
     for i from 1 to #newTerms - 1 do ret = ret + ret#i;
     ret
