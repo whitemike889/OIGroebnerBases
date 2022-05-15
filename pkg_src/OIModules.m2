@@ -75,6 +75,6 @@ G = makeFreeOIModule(P, d, {5, 6});
 phi = makeFreeOIModuleMap(F, G, {f, g});
 installBasisElements(G, 7);
 G_7;
-h = x_(1,7)*d_(7, {1, 3, 4, 5, 7}, 1);
-installBasisElements(F, 7);
-assert(phi h === x_(1,7)*(x_(1,7)*e_(7,{3,4},1)+x_(1,4)^2*e_(7,{1,4,5},2)))
+h = x_(1,7)^2*x_(1,6)*d_(7, {1, 3, 4, 5, 7}, 1) + x_(1,5)^3*d_(7, {1, 4, 5, 6, 7}, 1);
+installSchreyerMonomialOrder phi;
+assert(leadOITerm h === (getOITermsFromVector(x_(1,5)^3*d_(7, {1, 4, 5, 6, 7}, 1)))#0)

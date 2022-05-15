@@ -307,7 +307,7 @@ toString FreeOIModule := F -> "generator widths => "|toString F.genWidths |", de
 net FreeOIModule := F -> (
     local monOrderNet;
     if F.monOrder#0 === Lex then monOrderNet = net Lex;
-    if instance(F.monOrder#0, FreeOIModuleMap) then monOrderNet = "Schreyer monomial order via the FreeOIModuleMap: "|toString F.monOrder#0;
+    if instance(F.monOrder#0, FreeOIModuleMap) then monOrderNet = "Schreyer monomial order via the FreeOIModuleMap: "|net F.monOrder#0;
     "Polynomial OI-algebra: "|toString F.polyOIAlg ||
     "Basis symbol: "|net F.basisSym ||
     "Generator widths: "|net F.genWidths ||
@@ -361,11 +361,11 @@ VectorInWidth.synonym = "vector in a specified width"
 FreeOIModuleMap = new Type of HashTable
 FreeOIModuleMap.synonym = "free OI-module map"
 
-toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", generator image => "|toString f.genImage
+toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", generator image => "|net f.genImage
 
 net FreeOIModuleMap := f -> "Source module: "|toString f.srcMod ||
     "Target module: "|toString f.targMod ||
-    "Generator image: "|toString f.genImage
+    "Generator image: "|net f.genImage
 
 source FreeOIModuleMap := f -> f.srcMod
 target FreeOIModuleMap := f -> f.targMod
@@ -377,14 +377,8 @@ makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
 makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImage => L}
 
 -- Install juxtaposition method for FreeOIModuleMap
-FreeOIModuleMap VectorInWidth := (f, v) -> (
-    freeOIMod := freeOIModuleFromElement v;
-    if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
-
-    Width := widthOfElement v;
-    oiTerms := getOITermsFromVector v;
-
-    if #oiTerms == 0 then return null;
+FreeOIModuleMap List := (f, oiTerms) -> (
+    if #oiTerms == 0 then error "Cannot apply FreeOIModuleMap to an empty list";
 
     -- Generate the new terms
     newTerms := new List;
@@ -401,6 +395,15 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
     ret := newTerms#0;
     for i from 1 to #newTerms - 1 do ret = ret + ret#i;
     ret
+)
+
+-- Vector version
+FreeOIModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := freeOIModuleFromElement v;
+    if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
+
+    oiTerms := getOITermsFromVector v;
+    f oiTerms
 )
 
 --------------------------------------------------------------------------------
@@ -473,7 +476,7 @@ OITerm ? OITerm := (f, g) -> (
 
     monOrder := freeOIMod.monOrder#0;
     if monOrder === Lex then ( -- LEX ORDER
-        if not idxf == idxg then ( if idxf < idxg then return symbol > else return symbol < );
+        if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
         if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
 
@@ -481,7 +484,14 @@ OITerm ? OITerm := (f, g) -> (
         return eltf ? eltg
     )
     else if instance(monOrder, FreeOIModuleMap) then ( -- SCHREYER ORDER
-        -- TODO: IMPLEMENT THIS
+        freeOIModuleMap := monOrder;
+        imagef := freeOIModuleMap {f};
+        imageg := freeOIModuleMap {g};
+        if not leadOITerm imagef === leadOITerm imageg then return leadOITerm imagef ? leadOITerm imageg;
+        if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
+        if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
+        if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
+        return symbol ==;
     )
     else error "Monomial order not supported"
 )
@@ -541,7 +551,7 @@ getVectorFromOITerms List := L -> (
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: The largest OITerm in f
 leadOITerm = method(TypicalValue => OITerm)
-leadOITerm Vector := f -> (
+leadOITerm VectorInWidth := f -> (
     oiTerms := getOITermsFromVector f;
     if #oiTerms == 0 then return null;
     oiTerms#0
@@ -770,6 +780,6 @@ G = makeFreeOIModule(P, d, {5, 6});
 phi = makeFreeOIModuleMap(F, G, {f, g});
 installBasisElements(G, 7);
 G_7;
-h = x_(1,7)*d_(7, {1, 3, 4, 5, 7}, 1);
-installBasisElements(F, 7);
-assert(phi h === x_(1,7)*(x_(1,7)*e_(7,{3,4},1)+x_(1,4)^2*e_(7,{1,4,5},2)))
+h = x_(1,7)^2*x_(1,6)*d_(7, {1, 3, 4, 5, 7}, 1) + x_(1,5)^3*d_(7, {1, 4, 5, 6, 7}, 1);
+installSchreyerMonomialOrder phi;
+assert(leadOITerm h === (getOITermsFromVector(x_(1,5)^3*d_(7, {1, 4, 5, 6, 7}, 1)))#0)

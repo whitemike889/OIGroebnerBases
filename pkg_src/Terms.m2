@@ -47,7 +47,7 @@ OITerm ? OITerm := (f, g) -> (
 
     monOrder := freeOIMod.monOrder#0;
     if monOrder === Lex then ( -- LEX ORDER
-        if not idxf == idxg then ( if idxf < idxg then return symbol > else return symbol < );
+        if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
         if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
 
@@ -55,7 +55,14 @@ OITerm ? OITerm := (f, g) -> (
         return eltf ? eltg
     )
     else if instance(monOrder, FreeOIModuleMap) then ( -- SCHREYER ORDER
-        -- TODO: IMPLEMENT THIS
+        freeOIModuleMap := monOrder;
+        imagef := freeOIModuleMap {f};
+        imageg := freeOIModuleMap {g};
+        if not leadOITerm imagef === leadOITerm imageg then return leadOITerm imagef ? leadOITerm imageg;
+        if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
+        if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
+        if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
+        return symbol ==;
     )
     else error "Monomial order not supported"
 )
@@ -115,7 +122,7 @@ getVectorFromOITerms List := L -> (
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: The largest OITerm in f
 leadOITerm = method(TypicalValue => OITerm)
-leadOITerm Vector := f -> (
+leadOITerm VectorInWidth := f -> (
     oiTerms := getOITermsFromVector f;
     if #oiTerms == 0 then return null;
     oiTerms#0

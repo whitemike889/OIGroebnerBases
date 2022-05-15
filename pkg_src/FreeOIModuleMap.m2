@@ -9,11 +9,11 @@
 FreeOIModuleMap = new Type of HashTable
 FreeOIModuleMap.synonym = "free OI-module map"
 
-toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", generator image => "|toString f.genImage
+toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", generator image => "|net f.genImage
 
 net FreeOIModuleMap := f -> "Source module: "|toString f.srcMod ||
     "Target module: "|toString f.targMod ||
-    "Generator image: "|toString f.genImage
+    "Generator image: "|net f.genImage
 
 source FreeOIModuleMap := f -> f.srcMod
 target FreeOIModuleMap := f -> f.targMod
@@ -25,14 +25,8 @@ makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
 makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImage => L}
 
 -- Install juxtaposition method for FreeOIModuleMap
-FreeOIModuleMap VectorInWidth := (f, v) -> (
-    freeOIMod := freeOIModuleFromElement v;
-    if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
-
-    Width := widthOfElement v;
-    oiTerms := getOITermsFromVector v;
-
-    if #oiTerms == 0 then return null;
+FreeOIModuleMap List := (f, oiTerms) -> (
+    if #oiTerms == 0 then error "Cannot apply FreeOIModuleMap to an empty list";
 
     -- Generate the new terms
     newTerms := new List;
@@ -49,6 +43,15 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
     ret := newTerms#0;
     for i from 1 to #newTerms - 1 do ret = ret + ret#i;
     ret
+)
+
+-- Vector version
+FreeOIModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := freeOIModuleFromElement v;
+    if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
+
+    oiTerms := getOITermsFromVector v;
+    f oiTerms
 )
 
 --------------------------------------------------------------------------------

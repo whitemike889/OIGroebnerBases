@@ -12,7 +12,7 @@ toString FreeOIModule := F -> "generator widths => "|toString F.genWidths |", de
 net FreeOIModule := F -> (
     local monOrderNet;
     if F.monOrder#0 === Lex then monOrderNet = net Lex;
-    if instance(F.monOrder#0, FreeOIModuleMap) then monOrderNet = "Schreyer monomial order via the FreeOIModuleMap: "|toString F.monOrder#0;
+    if instance(F.monOrder#0, FreeOIModuleMap) then monOrderNet = "Schreyer monomial order via the FreeOIModuleMap: "|net F.monOrder#0;
     "Polynomial OI-algebra: "|toString F.polyOIAlg ||
     "Basis symbol: "|net F.basisSym ||
     "Generator widths: "|net F.genWidths ||
