@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-pkg_name = "OIModules"
+pkg_name = "OIGroebnerBases"
 
 with open("pkg_src/" + pkg_name + ".m2", "r") as file:
     lines = file.readlines()

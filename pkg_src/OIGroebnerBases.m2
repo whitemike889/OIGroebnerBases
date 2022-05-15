@@ -5,7 +5,7 @@
 -- LAST UPDATED: May 2022
 -- COMMENT: This package was made using Macaulay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
-newPackage("OIModules",
+newPackage("OIGroebnerBases",
     Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
     Version => "0.1",
     Date => "April 4, 2022", -- Project birthday
@@ -14,7 +14,7 @@ newPackage("OIModules",
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
     DebuggingMode => true,
-    HomePage => "https://github.com/morrowmh/OIModules"
+    HomePage => "https://github.com/morrowmh/OIGroebnerBases"
 )
 
 --------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ end
 -- Scratch work section
 
 restart
-load "OIModules.m2"
+load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ, 1, x);
 F = makeFreeOIModule(P, e, {2,3});
 installBasisElements(F, 5);
