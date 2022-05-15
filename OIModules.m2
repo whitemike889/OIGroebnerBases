@@ -85,7 +85,14 @@ export {
     "InducedModuleMap",
 
     -- Methods
-    "getInducedModuleMap", "getInducedModuleMaps"
+    "getInducedModuleMap", "getInducedModuleMaps",
+
+    ------------------------------------
+    -- From Algorithms.m2 --------------
+    ------------------------------------
+
+    -- Methods
+    "spoly", "buchberger"
 }
 
 scan({
@@ -345,6 +352,11 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 ModuleInWidth = new Type of Module
 ModuleInWidth.synonym = "module in a specified width"
 
+net ModuleInWidth := M -> (
+    rawMod := new Module from M;
+    net rawMod | " in width " | net rawMod.Width
+)
+
 -- Define the new type VectorInWidth
 -- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
 VectorInWidth = new Type of Vector
@@ -573,7 +585,7 @@ leadOITerm VectorInWidth := f -> (
 oiDivides = method()
 
 -- INPUT: '(f, g)', an OITerm 'f' and an OITerm 'g'
--- OUTPUT: A quotient if g OI-divides f, false otherwise
+-- OUTPUT: A List of the form {quotient, OIMap} if g OI-divides f, false otherwise
 oiDivides(OITerm, OITerm) := (f, g) -> (
     freeOIModf := f.basisIndex.freeOIMod;
     freeOIModg := g.basisIndex.freeOIMod;
@@ -584,7 +596,7 @@ oiDivides(OITerm, OITerm) := (f, g) -> (
     if Widthf < Widthg then return false;
     if Widthf == Widthg then (
         if not f.basisIndex === g.basisIndex then return false;
-        if f.ringElement % g.ringElement == 0 then return makeOITerm(f.ringElement // g.ringElement, f.basisIndex) else return false
+        if f.ringElement % g.ringElement == 0 then return {makeOITerm(f.ringElement // g.ringElement, f.basisIndex), (getOIMaps(Widthg, Widthf))#0} else return false
     );
 
     oiMaps := getOIMaps(Widthg, Widthf);
@@ -592,7 +604,7 @@ oiDivides(OITerm, OITerm) := (f, g) -> (
         moduleMap := getInducedModuleMap(freeOIModf, oiMap);
         imageg := leadOITerm moduleMap {g};
         if not imageg.basisIndex === f.basisIndex then continue;
-        if f.ringElement % imageg.ringElement == 0 then return makeOITerm(f.ringElement // imageg.ringElement, f.basisIndex) else continue
+        if f.ringElement % imageg.ringElement == 0 then return {makeOITerm(f.ringElement // imageg.ringElement, f.basisIndex), oiMap} else continue
     );
 
     false
@@ -787,6 +799,30 @@ InducedModuleMap VectorInWidth := (f, v) -> (
 
 --------------------------------------------------------------------------------
 -- END: InducedModuleMap.m2 ----------------------------------------------------
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- BEGIN: Algorithms.m2 --------------------------------------------------------
+--------------------------------------------------------------------------------
+
+-- Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
+remainder(VectorInWidth, List) := (f, L) -> (
+    if #L == 0 then error "Expected nonempty List";
+
+    rem := f;
+    for elt in L do (
+        div := oiDivides(f, elt);
+        if div === false then continue;
+        quot := div#0;
+        moduleMap := getInducedModuleMap(freeOIModuleFromElement f, div#1);
+        rem = rem - quot.ringElement * (moduleMap elt)
+    );
+
+    rem
+)
+
+--------------------------------------------------------------------------------
+-- END: Algorithms.m2 ----------------------------------------------------------
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------

@@ -50,6 +50,11 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 ModuleInWidth = new Type of Module
 ModuleInWidth.synonym = "module in a specified width"
 
+net ModuleInWidth := M -> (
+    rawMod := new Module from M;
+    net rawMod | " in width " | net rawMod.Width
+)
+
 -- Define the new type VectorInWidth
 -- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
 VectorInWidth = new Type of Vector

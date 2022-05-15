@@ -60,7 +60,14 @@ export {
     "InducedModuleMap",
 
     -- Methods
-    "getInducedModuleMap", "getInducedModuleMaps"
+    "getInducedModuleMap", "getInducedModuleMaps",
+
+    ------------------------------------
+    -- From Algorithms.m2 --------------
+    ------------------------------------
+
+    -- Methods
+    "spoly", "buchberger"
 }
 
 scan({
