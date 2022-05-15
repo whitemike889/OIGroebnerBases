@@ -37,7 +37,7 @@ export {
     "BasisIndex", "OITerm",
 
     -- Methods
-    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "leadOITerm", "getVectorFromOITerms",
+    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "leadOITerm", "getVectorFromOITerms", "oiDivides",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------

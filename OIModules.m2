@@ -62,7 +62,7 @@ export {
     "BasisIndex", "OITerm",
 
     -- Methods
-    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "leadOITerm", "getVectorFromOITerms",
+    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "leadOITerm", "getVectorFromOITerms", "oiDivides",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
@@ -435,6 +435,10 @@ net VectorInWidth := f -> (
     str
 )
 
+-- Comparison method for VectorInWidth
+-- COMMENT: Compares vectors by looking at their lead terms
+VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
+
 --------------------------------------------------------------------------------
 -- BEGIN: Terms.m2 -------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -564,6 +568,39 @@ leadOITerm VectorInWidth := f -> (
     if #oiTerms == 0 then return null;
     oiTerms#0
 )
+
+-- PURPOSE: Check if an OITerm OI-divides another OITerm, or check if the lead OITerm of a VectorInWidth OI-divides another lead OITerm of a VectorInWidth
+oiDivides = method()
+
+-- INPUT: '(f, g)', an OITerm 'f' and an OITerm 'g'
+-- OUTPUT: A quotient if g OI-divides f, false otherwise
+oiDivides(OITerm, OITerm) := (f, g) -> (
+    freeOIModf := f.basisIndex.freeOIMod;
+    freeOIModg := g.basisIndex.freeOIMod;
+    if not freeOIModf === freeOIModg then return false;
+
+    Widthf := f.basisIndex.oiMap.Width;
+    Widthg := g.basisIndex.oiMap.Width;
+    if Widthf < Widthg then return false;
+    if Widthf == Widthg then (
+        if not f.basisIndex === g.basisIndex then return false;
+        if f.ringElement % g.ringElement == 0 then return makeOITerm(f.ringElement // g.ringElement, f.basisIndex) else return false
+    );
+
+    oiMaps := getOIMaps(Widthg, Widthf);
+    for oiMap in oiMaps do (
+        moduleMap := getInducedModuleMap(freeOIModf, oiMap);
+        imageg := leadOITerm moduleMap {g};
+        if not imageg.basisIndex === f.basisIndex then continue;
+        if f.ringElement % imageg.ringElement == 0 then return makeOITerm(f.ringElement // imageg.ringElement, f.basisIndex) else continue
+    );
+
+    false
+)
+
+-- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
+-- OUTPUT: true if leadOITerm g OI-divides leadOITerm f, false otherwise
+oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, leadOITerm g)
 
 --------------------------------------------------------------------------------
 -- END: Terms.m2 ---------------------------------------------------------------
@@ -719,16 +756,15 @@ getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
     ret
 )
 
--- Install juxtaposition method for InducedModuleMap and VectorInWidth
-InducedModuleMap VectorInWidth := (f, v) -> (
-    freeOIMod := f.freeOIMod;
-    freeOIModFromVector := freeOIModuleFromElement v;
-    if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
-    if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
+-- Install juxtaposition method for InducedModuleMap and List
+-- COMMENT: Applies an InducedModuleMap to a List of OITerms and returns the resulting VectorInWidth
+InducedModuleMap List := (f, oiTerms) -> (
+    if #oiTerms == 0 then error "Cannot apply InducedModuleMap to an empty list";
 
-    algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
+    -- Generate the new terms
+    algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
     newTerms := new List;
-    for oiTerm in getOITermsFromVector v do (
+    for oiTerm in  oiTerms do (
         ringElement := oiTerm.ringElement;
         basisIndex := oiTerm.basisIndex;
         newRingElement := algMap ringElement;
@@ -737,6 +773,16 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     );
     
     getVectorFromOITerms newTerms
+)
+
+-- Install juxtaposition method for InducedModuleMap and VectorInWidth
+InducedModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := f.freeOIMod;
+    freeOIModFromVector := freeOIModuleFromElement v;
+    if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
+    if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
+
+    f getOITermsFromVector v
 )
 
 --------------------------------------------------------------------------------

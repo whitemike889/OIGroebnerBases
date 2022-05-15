@@ -57,16 +57,15 @@ getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
     ret
 )
 
--- Install juxtaposition method for InducedModuleMap and VectorInWidth
-InducedModuleMap VectorInWidth := (f, v) -> (
-    freeOIMod := f.freeOIMod;
-    freeOIModFromVector := freeOIModuleFromElement v;
-    if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
-    if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
+-- Install juxtaposition method for InducedModuleMap and List
+-- COMMENT: Applies an InducedModuleMap to a List of OITerms and returns the resulting VectorInWidth
+InducedModuleMap List := (f, oiTerms) -> (
+    if #oiTerms == 0 then error "Cannot apply InducedModuleMap to an empty list";
 
-    algMap := getInducedAlgebraMap(freeOIMod.polyOIAlg, f.oiMap);
+    -- Generate the new terms
+    algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
     newTerms := new List;
-    for oiTerm in getOITermsFromVector v do (
+    for oiTerm in  oiTerms do (
         ringElement := oiTerm.ringElement;
         basisIndex := oiTerm.basisIndex;
         newRingElement := algMap ringElement;
@@ -75,6 +74,16 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     );
     
     getVectorFromOITerms newTerms
+)
+
+-- Install juxtaposition method for InducedModuleMap and VectorInWidth
+InducedModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := f.freeOIMod;
+    freeOIModFromVector := freeOIModuleFromElement v;
+    if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
+    if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
+
+    f getOITermsFromVector v
 )
 
 --------------------------------------------------------------------------------

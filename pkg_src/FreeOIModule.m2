@@ -74,6 +74,10 @@ net VectorInWidth := f -> (
     str
 )
 
+-- Comparison method for VectorInWidth
+-- COMMENT: Compares vectors by looking at their lead terms
+VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
+
 load "Terms.m2"
 
 -- PURPOSE: Get the free module from a FreeOIModule in a specified width

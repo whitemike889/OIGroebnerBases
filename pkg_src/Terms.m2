@@ -128,6 +128,39 @@ leadOITerm VectorInWidth := f -> (
     oiTerms#0
 )
 
+-- PURPOSE: Check if an OITerm OI-divides another OITerm, or check if the lead OITerm of a VectorInWidth OI-divides another lead OITerm of a VectorInWidth
+oiDivides = method()
+
+-- INPUT: '(f, g)', an OITerm 'f' and an OITerm 'g'
+-- OUTPUT: A quotient if g OI-divides f, false otherwise
+oiDivides(OITerm, OITerm) := (f, g) -> (
+    freeOIModf := f.basisIndex.freeOIMod;
+    freeOIModg := g.basisIndex.freeOIMod;
+    if not freeOIModf === freeOIModg then return false;
+
+    Widthf := f.basisIndex.oiMap.Width;
+    Widthg := g.basisIndex.oiMap.Width;
+    if Widthf < Widthg then return false;
+    if Widthf == Widthg then (
+        if not f.basisIndex === g.basisIndex then return false;
+        if f.ringElement % g.ringElement == 0 then return makeOITerm(f.ringElement // g.ringElement, f.basisIndex) else return false
+    );
+
+    oiMaps := getOIMaps(Widthg, Widthf);
+    for oiMap in oiMaps do (
+        moduleMap := getInducedModuleMap(freeOIModf, oiMap);
+        imageg := leadOITerm moduleMap {g};
+        if not imageg.basisIndex === f.basisIndex then continue;
+        if f.ringElement % imageg.ringElement == 0 then return makeOITerm(f.ringElement // imageg.ringElement, f.basisIndex) else continue
+    );
+
+    false
+)
+
+-- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
+-- OUTPUT: true if leadOITerm g OI-divides leadOITerm f, false otherwise
+oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, leadOITerm g)
+
 --------------------------------------------------------------------------------
 -- END: Terms.m2 ---------------------------------------------------------------
 --------------------------------------------------------------------------------
