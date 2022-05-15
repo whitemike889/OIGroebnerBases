@@ -12,7 +12,7 @@ viewHelp OIModules
 ```
 To load the package in the future, run 
 ```Macaulay2
-needsPackage OIModules
+needsPackage "OIModules"
 ```
 
 This repository was created using [Macaulay2-Package-Template](https://github.com/morrowmh/Macaulay2-Package-Template).
