@@ -57,7 +57,7 @@ getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
     ret
 )
 
--- Install juxtaposition method for InducedModuleMap
+-- Install juxtaposition method for InducedModuleMap and VectorInWidth
 InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := f.freeOIMod;
     freeOIModFromVector := freeOIModuleFromElement v;

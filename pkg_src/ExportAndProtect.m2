@@ -83,7 +83,7 @@ scan({
     ------------------------------------
 
     -- Keys
-    srcMod, targMod, genImage,
+    srcMod, targMod, genImages,
 
     ------------------------------------
     -- From Terms.m2 -------------------
