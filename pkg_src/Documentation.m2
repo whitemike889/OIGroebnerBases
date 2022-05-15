@@ -1,7 +1,7 @@
 doc ///
 Node
     Key
-        OIModules
+        OIGroebnerBases
     Headline
         Computation in OI-modules over Noetherian polynomial OI-algebras
     Description
