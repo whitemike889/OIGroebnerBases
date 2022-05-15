@@ -91,7 +91,8 @@ getOITermsFromVector VectorInWidth := f -> (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
-        termList = append(termList, makeOITerm(entryList#i, basisElement.basisIndex))
+        termsInEntry := terms entryList#i;
+        for term in termsInEntry do termList = append(termList, makeOITerm(term, basisElement.basisIndex))
     );
 
     reverse sort termList
@@ -160,6 +161,25 @@ oiDivides(OITerm, OITerm) := (f, g) -> (
 -- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
 -- OUTPUT: true if leadOITerm g OI-divides leadOITerm f, false otherwise
 oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, leadOITerm g)
+
+-- Get the least common multiple of two OITerms
+lcm(OITerm, OITerm) := (f, g) -> (
+    Widthf := f.basisIndex.oiMap.Width;
+    Widthg := g.basisIndex.oiMap.Width;
+    if not Widthf == Widthg then error "OITerms must belong to the same width";
+    freeOIModf := f.basisIndex.freeOIMod;
+    freeOIModg := g.basisIndex.freeOIMod;
+    if not freeOIModf === freeOIModg then error "OITerms must belong to the same free OI-module";
+
+    freeMod := getFreeModuleInWidth(freeOIModf, Widthf);
+
+    if not f.basisIndex === g.basisIndex then return makeOITerm(0, f.basisIndex);
+
+    makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
+)
+
+-- Check if an OITerm is zero
+isZero OITerm := f -> f.ringElement == 0
 
 --------------------------------------------------------------------------------
 -- END: Terms.m2 ---------------------------------------------------------------

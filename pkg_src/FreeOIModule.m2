@@ -60,6 +60,16 @@ net ModuleInWidth := M -> (
 VectorInWidth = new Type of Vector
 VectorInWidth.synonym = "vector in a specified width"
 
+-- PURPOSE: Check if a VectorInWidth is zero
+-- INPUT: A VectorInWidth 'f'
+-- OUTPUT: true if f is zero, false otherwise
+isZero = method(TypicalValue => Boolean)
+isZero VectorInWidth := f -> (
+    freeOIMod := freeOIModuleFromElement f;
+    Width := widthOfElement f;
+    f === 0_(getFreeModuleInWidth(freeOIMod, Width))
+)
+
 load "FreeOIModuleMap.m2"
 
 -- PURPOSE: Install a Schreyer monomial order on a FreeOIModule

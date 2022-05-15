@@ -47,7 +47,7 @@ export {
     "FreeOIModule", "VectorInWidth", "ModuleInWidth",
 
     -- Methods
-    "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements",
+    "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
 
     -- Options
     "DegreeShifts",

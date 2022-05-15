@@ -72,7 +72,7 @@ export {
     "FreeOIModule", "VectorInWidth", "ModuleInWidth",
 
     -- Methods
-    "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements",
+    "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
 
     -- Options
     "DegreeShifts",
@@ -362,6 +362,16 @@ net ModuleInWidth := M -> (
 VectorInWidth = new Type of Vector
 VectorInWidth.synonym = "vector in a specified width"
 
+-- PURPOSE: Check if a VectorInWidth is zero
+-- INPUT: A VectorInWidth 'f'
+-- OUTPUT: true if f is zero, false otherwise
+isZero = method(TypicalValue => Boolean)
+isZero VectorInWidth := f -> (
+    freeOIMod := freeOIModuleFromElement f;
+    Width := widthOfElement f;
+    f === 0_(getFreeModuleInWidth(freeOIMod, Width))
+)
+
 --------------------------------------------------------------------------------
 -- BEGIN: FreeOIModuleMap.m2 ---------------------------------------------------
 --------------------------------------------------------------------------------
@@ -544,7 +554,8 @@ getOITermsFromVector VectorInWidth := f -> (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
-        termList = append(termList, makeOITerm(entryList#i, basisElement.basisIndex))
+        termsInEntry := terms entryList#i;
+        for term in termsInEntry do termList = append(termList, makeOITerm(term, basisElement.basisIndex))
     );
 
     reverse sort termList
@@ -613,6 +624,25 @@ oiDivides(OITerm, OITerm) := (f, g) -> (
 -- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
 -- OUTPUT: true if leadOITerm g OI-divides leadOITerm f, false otherwise
 oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, leadOITerm g)
+
+-- Get the least common multiple of two OITerms
+lcm(OITerm, OITerm) := (f, g) -> (
+    Widthf := f.basisIndex.oiMap.Width;
+    Widthg := g.basisIndex.oiMap.Width;
+    if not Widthf == Widthg then error "OITerms must belong to the same width";
+    freeOIModf := f.basisIndex.freeOIMod;
+    freeOIModg := g.basisIndex.freeOIMod;
+    if not freeOIModf === freeOIModg then error "OITerms must belong to the same free OI-module";
+
+    freeMod := getFreeModuleInWidth(freeOIModf, Widthf);
+
+    if not f.basisIndex === g.basisIndex then return makeOITerm(0, f.basisIndex);
+
+    makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
+)
+
+-- Check if an OITerm is zero
+isZero OITerm := f -> f.ringElement == 0
 
 --------------------------------------------------------------------------------
 -- END: Terms.m2 ---------------------------------------------------------------
@@ -819,6 +849,27 @@ remainder(VectorInWidth, List) := (f, L) -> (
     );
 
     rem
+)
+
+-- Compute the S-polynomial of two VectorInWidths
+spoly = method(TypicalValue => VectorInWidth)
+spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
+    Widthf := widthOfElement f;
+    Widthg := widthOfElement g;
+    if not Widthf == Widthg then error "Vectors must belong to the same width";
+
+    freeOIModf := freeOIModuleFromElement f;
+    freeOIModg := freeOIModuleFromElement g;
+    if not freeOIModf === freeOIModg then error "Vectors must belong to the same free OI-module";
+    freeMod := getFreeModuleInWidth(freeOIModf, Widthf);
+
+    if isZero f or isZero g then return 0_freeMod;
+
+    lotf := leadOITerm f;
+    lotg := leadOITerm g;
+    lcmfg := lcm(lotf, lotg);
+    if isZero lcmfg then return 0_freeMod;
+    (lcmfg.ringElement // lotf.ringElement)*f - (lcmfg.ringElement // lotg.ringElement)*g
 )
 
 --------------------------------------------------------------------------------
