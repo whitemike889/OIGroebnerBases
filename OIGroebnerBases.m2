@@ -42,7 +42,7 @@ export {
     "PolynomialOIAlgebra",
 
     -- Methods
-    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps",
+    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps", "linearFromRowCol",
 
     ------------------------------------
     -- From FreeOIModuleMap.m2 ---------
@@ -62,7 +62,7 @@ export {
     "BasisIndex", "OITerm",
 
     -- Methods
-    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "leadOITerm", "getVectorFromOITerms", "oiDivides",
+    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "getCombinedOITermsFromVector", "leadOITerm", "getVectorFromOITerms", "oiDivides",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
@@ -92,7 +92,7 @@ export {
     ------------------------------------
 
     -- Methods
-    "spoly", "buchberger"
+    "spoly", "oiPairs", "oiGB", "isOIGB"
 }
 
 scan({
@@ -431,6 +431,7 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
     f oiTerms
 )
 
+-- Check if a FreeOIModuleMap is a graded map
 isHomogeneous FreeOIModuleMap := f -> (
     for elt in f.genImages do if not isHomogeneous elt then return false;
     -f.srcMod.degShifts == flatten apply(f.genImages, degree)
@@ -447,7 +448,7 @@ installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
 net VectorInWidth := f -> (
-    oiTerms := getOITermsFromVector f;
+    oiTerms := getCombinedOITermsFromVector f;
     if #oiTerms == 0 then return net 0;
     if #oiTerms == 1 then return net oiTerms#0;
     
@@ -556,6 +557,28 @@ getOITermsFromVector VectorInWidth := f -> (
         basisElement := freeMod.basisElements#i;
         termsInEntry := terms entryList#i;
         for term in termsInEntry do termList = append(termList, makeOITerm(term, basisElement.basisIndex))
+    );
+
+    reverse sort termList
+)
+
+-- PURPOSE: Same as getOITermsFromVector but combines terms of the same basis element
+-- INPUT: A VectorInWidth 'f'
+-- OUTPUT: A List of combined OITerms corresponding to the terms of f sorted from greatest to least
+-- COMMENT: This method is only used for printing elements (see net VectorInWidth)
+getCombinedOITermsFromVector = method(TypicalValue => List)
+getCombinedOITermsFromVector VectorInWidth := f -> (
+    freeOIMod := (class f).freeOIMod;
+    Width := (class f).Width;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width);
+    termList := new List;
+    entryList := entries f;
+
+    for i to #entryList - 1 do (
+        if entryList#i == 0 then continue;
+
+        basisElement := freeMod.basisElements#i;
+        termList = append(termList, makeOITerm(entryList#i, basisElement.basisIndex))
     );
 
     reverse sort termList
@@ -835,23 +858,40 @@ InducedModuleMap VectorInWidth := (f, v) -> (
 -- BEGIN: Algorithms.m2 --------------------------------------------------------
 --------------------------------------------------------------------------------
 
--- Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
+-- PURPOSE: Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
+-- INPUT: '(f, L)', a VectorInWidth 'f' and a List 'L'
+-- OUTPUT: A remainder of f modulo L
 remainder(VectorInWidth, List) := (f, L) -> (
     if #L == 0 then error "Expected nonempty List";
 
+    if isZero f then return f;
+
     rem := f;
-    for elt in L do (
-        div := oiDivides(f, elt);
-        if div === false then continue;
-        quot := div#0;
-        moduleMap := getInducedModuleMap(freeOIModuleFromElement f, div#1);
-        rem = rem - quot.ringElement * (moduleMap elt)
+    while true do (
+        divisionOccurred := false;
+        for elt in L do (
+            div := oiDivides(rem, elt);
+            if div === false then continue;
+
+            quot := div#0;
+            moduleMap := getInducedModuleMap(freeOIModuleFromElement f, div#1);
+            rem = rem - quot.ringElement * (moduleMap elt);
+
+            if isZero rem then return rem;
+            divisionOccurred = true;
+            break
+        );
+
+        if not divisionOccurred then break
     );
 
     rem
 )
 
--- Compute the S-polynomial of two VectorInWidths
+-- PURPOSE: Compute the S-polynomial of two VectorInWidths
+-- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
+-- OUTPUT: The S-polynomial S(f, g)
+-- COMMENT: Returns zero if either f or g is zero or if lcm(leadOITerm f, leadOITerm g) is zero
 spoly = method(TypicalValue => VectorInWidth)
 spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
     Widthf := widthOfElement f;
@@ -870,6 +910,90 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
     lcmfg := lcm(lotf, lotg);
     if isZero lcmfg then return 0_freeMod;
     (lcmfg.ringElement // lotf.ringElement)*f - (lcmfg.ringElement // lotg.ringElement)*g
+)
+
+-- PURPOSE: Generate a List of OI-pairs from a List of VectorInWidths
+-- INPUT: A List 'L'
+-- OUTPUT: A List of OI-pairs made from L
+-- COMMENT: Slow. This is the main bottleneck. Need to optimize.
+oiPairs = method(TypicalValue => List)
+oiPairs List := L -> (
+    if #L < 2  then error "Expected a List with at least 2 elements";
+
+    ret := new List;
+    for i to #L - 2 do (
+        f := L#i;
+        lotf := leadOITerm f;
+        Widthf := widthOfElement f;
+        for j from i + 1 to #L - 1 do (
+            g := L#j;
+            Widthg := widthOfElement g;
+            lotg := leadOITerm g;
+            if not lotf.basisIndex.idx == lotg.basisIndex.idx then continue; -- These will have lcm zero
+
+            searchMin := max(Widthf, Widthg);
+            searchMax := Widthf + Widthg;
+            for i to searchMax - searchMin do (
+                k := searchMax - i;
+                oiMapsFromf := getOIMaps(Widthf, k);
+
+                -- Given an OI-map out of f, we construct the corresponding OI-maps out of g
+                for oiMapFromf in oiMapsFromf do (
+                    base := set(1..k) - set oiMapFromf.assignment; -- Get the starting set
+
+                    -- Now add back in the i-element subsets of oiMapFromf.assignment and make the pairs
+                    for subset in subsets(oiMapFromf.assignment, i) do (
+                        oiMapFromg := makeOIMap(k, sort toList(base + set subset));
+                        if not composeOIMaps(oiMapFromf, lotf.basisIndex.oiMap) === composeOIMaps(oiMapFromg, lotg.basisIndex.oiMap) then continue; -- These will have lcm zero
+
+                        moduleMapFromf := getInducedModuleMap(freeOIModuleFromElement f, oiMapFromf);
+                        moduleMapFromg := getInducedModuleMap(freeOIModuleFromElement g, oiMapFromg);
+
+                        candidate := {moduleMapFromf f, moduleMapFromg g};
+                        if not member(candidate, ret) then ret = append(ret, candidate) -- Avoid duplicates
+                    )
+                )
+            )
+        )
+    );
+
+    ret
+)
+
+-- PURPOSE: Compute a Groebner basis
+-- INPUT: A List 'L' of VectorInWidths
+-- OUTPUT: A Groebner basis made from L
+-- COMMENT: Uses the OI-Buchberger's Algorithm
+oiGB = method(TypicalValue => List)
+oiGB List := L -> (
+    if #L == 0 then error "Expected a nonempty List";
+    if #L == 1 then return L;
+    
+    ret := L;
+    while true do ( -- Terminates by a Noetherianity argument
+        retTmp := ret;
+
+        for pair in oiPairs retTmp do (
+            rem := remainder(spoly(pair#0, pair#1), retTmp);
+            if not isZero rem then ret = append(ret, rem);
+        );
+
+        if ret === retTmp then return ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
+    )
+)
+
+-- PURPOSE: Check if a List is an OI-Groebner basis
+-- INPUT: A List 'L' of VectorInWidths
+-- OUTPUT: true if L is an OI-Groebner basis, false otherwise
+isOIGB = method(TypicalValue => Boolean)
+isOIGB List := L -> (
+    if #L == 0 then return false;
+    if #L == 1 then return true;
+
+    for pair in oiPairs L do
+        if not isZero remainder(spoly(pair#0, pair#1), L) then return false; -- If L were a GB, every element would have a unique remainder of zero
+    
+    true
 )
 
 --------------------------------------------------------------------------------
@@ -909,10 +1033,19 @@ end
 
 restart
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 1, x);
-F = makeFreeOIModule(P, e, {2,3});
+P = makePolynomialOIAlgebra(ZZ/5, 1, x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+f = x_(1,1)^2*e_(1, {1}, 1);
+installBasisElements(F, 2);
+g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1)
+installBasisElements(F, 3);
+h = x_(1,3)*e_(3, {2}, 1) + e_(3, {3}, 1)
+
+
+
+
 installBasisElements(F, 5);
-F_5;
 f = x_(1,5)^2*e_(5, {2,3}, 1) + x_(1,3)^2*e_(5, {1,3,4}, 2);
 installBasisElements(F, 6);
 F_6;

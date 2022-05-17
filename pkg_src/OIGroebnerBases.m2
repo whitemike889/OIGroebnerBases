@@ -65,10 +65,19 @@ end
 
 restart
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 1, x);
-F = makeFreeOIModule(P, e, {2,3});
+P = makePolynomialOIAlgebra(ZZ/5, 1, x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+f = x_(1,1)^2*e_(1, {1}, 1);
+installBasisElements(F, 2);
+g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1)
+installBasisElements(F, 3);
+h = x_(1,3)*e_(3, {2}, 1) + e_(3, {3}, 1)
+
+
+
+
 installBasisElements(F, 5);
-F_5;
 f = x_(1,5)^2*e_(5, {2,3}, 1) + x_(1,3)^2*e_(5, {1,3,4}, 2);
 installBasisElements(F, 6);
 F_6;

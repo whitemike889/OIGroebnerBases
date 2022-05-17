@@ -98,6 +98,28 @@ getOITermsFromVector VectorInWidth := f -> (
     reverse sort termList
 )
 
+-- PURPOSE: Same as getOITermsFromVector but combines terms of the same basis element
+-- INPUT: A VectorInWidth 'f'
+-- OUTPUT: A List of combined OITerms corresponding to the terms of f sorted from greatest to least
+-- COMMENT: This method is only used for printing elements (see net VectorInWidth)
+getCombinedOITermsFromVector = method(TypicalValue => List)
+getCombinedOITermsFromVector VectorInWidth := f -> (
+    freeOIMod := (class f).freeOIMod;
+    Width := (class f).Width;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width);
+    termList := new List;
+    entryList := entries f;
+
+    for i to #entryList - 1 do (
+        if entryList#i == 0 then continue;
+
+        basisElement := freeMod.basisElements#i;
+        termList = append(termList, makeOITerm(entryList#i, basisElement.basisIndex))
+    );
+
+    reverse sort termList
+)
+
 -- PURPOSE: Convert an element from a list of OITerms to vector form
 -- INPUT: A List 'L' of OITerms
 -- OUTPUT: A VectorInWidth made from L

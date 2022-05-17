@@ -79,7 +79,7 @@ installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
 net VectorInWidth := f -> (
-    oiTerms := getOITermsFromVector f;
+    oiTerms := getCombinedOITermsFromVector f;
     if #oiTerms == 0 then return net 0;
     if #oiTerms == 1 then return net oiTerms#0;
     
