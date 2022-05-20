@@ -916,8 +916,8 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 -- INPUT: A List 'L'
 -- OUTPUT: A List of OI-pairs made from L
 -- COMMENT: Slow. This is the main bottleneck. Need to optimize.
-oiPairs = method(TypicalValue => List)
-oiPairs List := L -> (
+oiPairs = method(TypicalValue => List, Options => {Verbose => false})
+oiPairs List := opts -> L -> (
     if #L < 2  then error "Expected a List with at least 2 elements";
 
     ret := new List;
@@ -930,6 +930,8 @@ oiPairs List := L -> (
             Widthg := widthOfElement g;
             lotg := leadOITerm g;
             if not lotf.basisIndex.idx == lotg.basisIndex.idx then continue; -- These will have lcm zero
+
+            if opts.Verbose then print("Generating pairs for "|net f|" and "|net g);
 
             searchMin := max(Widthf, Widthg);
             searchMax := Widthf + Widthg;
@@ -945,6 +947,8 @@ oiPairs List := L -> (
                     for subset in subsets(oiMapFromf.assignment, i) do (
                         oiMapFromg := makeOIMap(k, sort toList(base + set subset));
                         if not composeOIMaps(oiMapFromf, lotf.basisIndex.oiMap) === composeOIMaps(oiMapFromg, lotg.basisIndex.oiMap) then continue; -- These will have lcm zero
+
+                        if opts.Verbose then print("Found OI-maps "|net oiMapFromf|" and "|net oiMapFromg);
 
                         moduleMapFromf := getInducedModuleMap(freeOIModuleFromElement f, oiMapFromf);
                         moduleMapFromg := getInducedModuleMap(freeOIModuleFromElement g, oiMapFromg);
@@ -964,18 +968,38 @@ oiPairs List := L -> (
 -- INPUT: A List 'L' of VectorInWidths
 -- OUTPUT: A Groebner basis made from L
 -- COMMENT: Uses the OI-Buchberger's Algorithm
-oiGB = method(TypicalValue => List)
-oiGB List := L -> (
+oiGB = method(TypicalValue => List, Options => {Verbose => false})
+oiGB List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then return L;
     
     ret := L;
+    addedTotal := 0;
     while true do ( -- Terminates by a Noetherianity argument
         retTmp := ret;
 
-        for pair in oiPairs retTmp do (
-            rem := remainder(spoly(pair#0, pair#1), retTmp);
-            if not isZero rem then ret = append(ret, rem);
+        oipairs := oiPairs(ret, Verbose => opts.Verbose);
+        encountered := new List;
+        addedThisPhase := 0;
+        for i to #oipairs - 1 do (
+            s := spoly((oipairs#i)#0, (oipairs#i)#1);
+            if member(s, encountered) then continue; -- Skip redundant S-polynomials
+            encountered = append(encountered, s);
+
+            if opts.Verbose then (
+                print("On pair "|toString (i + 1)|" out of "|toString (#oipairs));
+                print("Elements added so far this phase: "|toString addedThisPhase);
+                print("Elements added total: "|toString addedTotal);
+                print("Dividing "|net s|" by "|net ret)
+            );
+
+            rem := remainder(s, ret);
+            if not isZero rem and not member(rem, ret) then (
+                if opts.Verbose then print("Remainder: "|net rem);
+                ret = append(ret, rem);
+                addedThisPhase = addedThisPhase + 1;
+                addedTotal = addedTotal + 1
+            )
         );
 
         if ret === retTmp then return ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
@@ -1033,6 +1057,39 @@ end
 
 restart
 load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 2);
+installBasisElements(F, 3);
+
+F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
+F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
+
+oiGB {f, g} -- takes about 1 hour on my laptop
+
+
+f = e_(2, {1}, 1);
+g = e_(3, {2}, 1);
+oiPairs {f, g} -- in width 4: {2,3} and {1,2,4}, {2,4} and {1,2,3}
+                -- in width 3: {2,3} and {1,2,3}
+
+f = e_(2,{2}, 1);
+g = e_(3, {1}, 1);
+oiPairs {f, g} -- only one pair in width 4: {1,2} and {2,3,4}
+
+f = e_(2,{1}, 1);
+oiPairs {f, g} -- in width 4: {1,2} and {1,3,4}, {1,3} and {1,2,4}, {1,4} and {1,2,3}
+                -- in width 3: {1,2} and {1,2,3}, {1,3} and {1,2,3}, {2,3} and {1,2,3}
+
+f = e_(2,{2}, 1);
+g = e_(3, {2}, 1);
+oiPairs {f, g} -- in width 4: {1,3} and {2,3,4}, {2,3} and {1,3,4}
+                -- in width 3: {1,2} and {1,2,3}
+
+g = e_(3,{3}, 1);
+oiPairs {f, g} -- in width 4: {3,4} and {1,2,3}
+
+
 P = makePolynomialOIAlgebra(ZZ/5, 1, x);
 F = makeFreeOIModule(P, e, {1});
 installBasisElements(F, 1);
@@ -1040,7 +1097,9 @@ f = x_(1,1)^2*e_(1, {1}, 1);
 installBasisElements(F, 2);
 g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1)
 installBasisElements(F, 3);
-h = x_(1,3)*e_(3, {2}, 1) + e_(3, {3}, 1)
+h = x_(1,3)*e_(3, {2}, 1) + e_(3, {1}, 1)
+
+
 
 
 

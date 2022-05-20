@@ -65,6 +65,39 @@ end
 
 restart
 load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 2);
+installBasisElements(F, 3);
+
+F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
+F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
+
+oiGB {f, g} -- takes about 1 hour on my laptop
+
+
+f = e_(2, {1}, 1);
+g = e_(3, {2}, 1);
+oiPairs {f, g} -- in width 4: {2,3} and {1,2,4}, {2,4} and {1,2,3}
+                -- in width 3: {2,3} and {1,2,3}
+
+f = e_(2,{2}, 1);
+g = e_(3, {1}, 1);
+oiPairs {f, g} -- only one pair in width 4: {1,2} and {2,3,4}
+
+f = e_(2,{1}, 1);
+oiPairs {f, g} -- in width 4: {1,2} and {1,3,4}, {1,3} and {1,2,4}, {1,4} and {1,2,3}
+                -- in width 3: {1,2} and {1,2,3}, {1,3} and {1,2,3}, {2,3} and {1,2,3}
+
+f = e_(2,{2}, 1);
+g = e_(3, {2}, 1);
+oiPairs {f, g} -- in width 4: {1,3} and {2,3,4}, {2,3} and {1,3,4}
+                -- in width 3: {1,2} and {1,2,3}
+
+g = e_(3,{3}, 1);
+oiPairs {f, g} -- in width 4: {3,4} and {1,2,3}
+
+
 P = makePolynomialOIAlgebra(ZZ/5, 1, x);
 F = makeFreeOIModule(P, e, {1});
 installBasisElements(F, 1);
@@ -72,7 +105,9 @@ f = x_(1,1)^2*e_(1, {1}, 1);
 installBasisElements(F, 2);
 g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1)
 installBasisElements(F, 3);
-h = x_(1,3)*e_(3, {2}, 1) + e_(3, {3}, 1)
+h = x_(1,3)*e_(3, {2}, 1) + e_(3, {1}, 1)
+
+
 
 
 
