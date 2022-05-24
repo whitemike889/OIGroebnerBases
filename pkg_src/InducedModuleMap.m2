@@ -52,9 +52,9 @@ getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
 getInducedModuleMaps = method(TypicalValue => List)
 getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
     oiMaps := getOIMaps(m, n);
-    ret := new List;
-    for oiMap in oiMaps do ret = append(ret, getInducedModuleMap(F, oiMap));
-    ret
+    ret := new MutableList;
+    for i to #oiMaps - 1 do ret#i = getInducedModuleMap(F, oiMaps#i);
+    toList ret
 )
 
 -- Install juxtaposition method for InducedModuleMap and List
@@ -64,16 +64,16 @@ InducedModuleMap List := (f, oiTerms) -> (
 
     -- Generate the new terms
     algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
-    newTerms := new List;
-    for oiTerm in  oiTerms do (
-        ringElement := oiTerm.ringElement;
-        basisIndex := oiTerm.basisIndex;
+    newTerms := new MutableList;
+    for i to #oiTerms - 1 do (
+        ringElement := (oiTerms#i).ringElement;
+        basisIndex := (oiTerms#i).basisIndex;
         newRingElement := algMap ringElement;
         newBasisIndex := f.assignment#basisIndex;
-        newTerms = append(newTerms, makeOITerm(newRingElement, newBasisIndex))
+        newTerms#i = makeOITerm(newRingElement, newBasisIndex)
     );
     
-    getVectorFromOITerms newTerms
+    getVectorFromOITerms toList newTerms
 )
 
 -- Install juxtaposition method for InducedModuleMap and VectorInWidth

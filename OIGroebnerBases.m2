@@ -143,6 +143,9 @@ scan({
 -- BEGIN: OIMap.m2 -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+-- Cache for storing OI-maps
+oiMapCache = new MutableHashTable
+
 -- PURPOSE: Define the new type OIMap
 -- COMMENT: Should be of the form {Width => ZZ, assignment => List}
 OIMap = new Type of HashTable
@@ -167,9 +170,18 @@ makeOIMap(ZZ, List) := (n, L) -> new OIMap from {Width => n, assignment => L}
 getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
     if n < m then return {};
-    ret := new List;
-    sets := subsets(set toList(1..n), m);
-    for s in sets do ret = append(ret, new OIMap from {Width => n, assignment => sort toList s});
+    
+    -- Return the maps if they already exist
+    if oiMapCache#?(m, n) then return oiMapCache#(m, n);
+
+    ret := new MutableList;
+    sets := subsets(toList(1..n), m);
+    for i to #sets - 1 do ret#i = new OIMap from {Width => n, assignment => sets#i};
+    ret = toList ret;
+
+    -- Store the maps
+    oiMapCache#(m, n) = ret;
+
     ret
 )
 
@@ -179,9 +191,9 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
     if not #f.assignment == g.Width then error "Maps cannot be composed due to incompatible source and target";
-    L := new List;
-    for i to #g.assignment - 1 do L = append(L, f.assignment#(g.assignment#i - 1));
-    new OIMap from {Width => f.Width, assignment => L}
+    L := new MutableList;
+    for i to #g.assignment - 1 do L#i = f.assignment#(g.assignment#i - 1);
+    new OIMap from {Width => f.Width, assignment => toList L}
 )
 
 --------------------------------------------------------------------------------
@@ -268,12 +280,13 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     n := f.Width;
     src := getAlgebraInWidth(P, m);
     targ := getAlgebraInWidth(P, n);
-    subs := new List;
+    subs := new MutableList;
+    k := 0;
     for j from 1 to m do
-        for i from 1 to P.varRows do subs = append(subs, src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))));
+        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k+1 );
     
     -- Make the map
-    ret := map(targ, src, subs);
+    ret := map(targ, src, toList subs);
 
     -- Store the map
     P.maps#(f.Width, f.assignment) = ret;
@@ -289,11 +302,11 @@ getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := (P, m, n) -> (
     if n < m then return {};
     
     -- Get the maps
-    ret := new List;
+    ret := new MutableList;
     oiMaps := getOIMaps(m, n);
-    for oiMap in oiMaps do ret = append(ret, getInducedAlgebraMap(P, oiMap));
+    for i to #oiMaps - 1 do ret#i = getInducedAlgebraMap(P, oiMaps#i);
 
-    ret
+    toList ret
 )
 
 --------------------------------------------------------------------------------
@@ -405,19 +418,19 @@ FreeOIModuleMap List := (f, oiTerms) -> (
     if #oiTerms == 0 then error "Cannot apply FreeOIModuleMap to an empty list";
 
     -- Generate the new terms
-    newTerms := new List;
-    for oiTerm in oiTerms do (
-        ringElement := oiTerm.ringElement;
-        basisIndex := oiTerm.basisIndex;
+    newTerms := new MutableList;
+    for i to #oiTerms - 1 do (
+        ringElement := (oiTerms#i).ringElement;
+        basisIndex := (oiTerms#i).basisIndex;
         oiMap := basisIndex.oiMap;
         idx := basisIndex.idx;
         inducedModuleMap := getInducedModuleMap(f.targMod, oiMap);
-        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImages#(idx - 1))) -- x*d_(pi,i) ---> x*F(pi)(b_i)
+        newTerms#i = ringElement * inducedModuleMap(f.genImages#(idx - 1)) -- x*d_(pi,i) ---> x*F(pi)(b_i)
     );
 
     -- Sum the terms up
     ret := newTerms#0;
-    for i from 1 to #newTerms - 1 do ret = ret + ret#i;
+    for i from 1 to #newTerms - 1 do ret = ret + newTerms#i;
     ret
 )
 
@@ -548,18 +561,19 @@ getOITermsFromVector VectorInWidth := f -> (
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
-    termList := new List;
+    termList := new MutableList;
     entryList := entries f;
 
+    k := 0;
     for i to #entryList - 1 do (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
         termsInEntry := terms entryList#i;
-        for term in termsInEntry do termList = append(termList, makeOITerm(term, basisElement.basisIndex))
+        for term in termsInEntry do ( termList#k = makeOITerm(term, basisElement.basisIndex); k = k + 1 )
     );
 
-    reverse sort termList
+    reverse sort toList termList
 )
 
 -- PURPOSE: Same as getOITermsFromVector but combines terms of the same basis element
@@ -571,17 +585,19 @@ getCombinedOITermsFromVector VectorInWidth := f -> (
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
-    termList := new List;
+    termList := new MutableList;
     entryList := entries f;
 
+    k := 0;
     for i to #entryList - 1 do (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
-        termList = append(termList, makeOITerm(entryList#i, basisElement.basisIndex))
+        termList#k = makeOITerm(entryList#i, basisElement.basisIndex);
+        k = k + 1
     );
 
-    reverse sort termList
+    reverse sort toList termList
 )
 
 -- PURPOSE: Convert an element from a list of OITerms to vector form
@@ -650,15 +666,6 @@ oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, lea
 
 -- Get the least common multiple of two OITerms
 lcm(OITerm, OITerm) := (f, g) -> (
-    Widthf := f.basisIndex.oiMap.Width;
-    Widthg := g.basisIndex.oiMap.Width;
-    if not Widthf == Widthg then error "OITerms must belong to the same width";
-    freeOIModf := f.basisIndex.freeOIMod;
-    freeOIModg := g.basisIndex.freeOIMod;
-    if not freeOIModf === freeOIModg then error "OITerms must belong to the same free OI-module";
-
-    freeMod := getFreeModuleInWidth(freeOIModf, Widthf);
-
     if not f.basisIndex === g.basisIndex then return makeOITerm(0, f.basisIndex);
 
     makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
@@ -681,20 +688,22 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
 
     -- Generate the degrees
     alg := getAlgebraInWidth(F.polyOIAlg, n);
-    degList := new List;
-    for i to #F.genWidths - 1 do degList = append(degList, binomial(n, F.genWidths#i) : F.degShifts#i);
+    degList := new MutableList;
+    for i to #F.genWidths - 1 do degList#i = binomial(n, F.genWidths#i) : F.degShifts#i;
 
     -- Make the module
-    retHash := new MutableHashTable from alg^degList;
+    retHash := new MutableHashTable from alg^(toList degList);
     retHash.Width = n;
     retHash.freeOIMod = F;
-    retHash.basisElements = new List;
     
     -- Generate the basis elements
+    k := 0;
+    mutableBasisElements := new MutableList;
     for i to #F.genWidths - 1 do (
         oiMaps := getOIMaps(F.genWidths#i, n);
-        for oiMap in oiMaps do retHash.basisElements = append(retHash.basisElements, makeBasisElement makeBasisIndex(F, oiMap, i + 1))
+        for oiMap in oiMaps do ( mutableBasisElements#k = makeBasisElement makeBasisIndex(F, oiMap, i + 1); k = k + 1 )
     );
+    retHash.basisElements = toList mutableBasisElements;
 
     ret := new ModuleInWidth of VectorInWidth from retHash;
 
@@ -816,9 +825,9 @@ getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
 getInducedModuleMaps = method(TypicalValue => List)
 getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
     oiMaps := getOIMaps(m, n);
-    ret := new List;
-    for oiMap in oiMaps do ret = append(ret, getInducedModuleMap(F, oiMap));
-    ret
+    ret := new MutableList;
+    for i to #oiMaps - 1 do ret#i = getInducedModuleMap(F, oiMaps#i);
+    toList ret
 )
 
 -- Install juxtaposition method for InducedModuleMap and List
@@ -828,16 +837,16 @@ InducedModuleMap List := (f, oiTerms) -> (
 
     -- Generate the new terms
     algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
-    newTerms := new List;
-    for oiTerm in  oiTerms do (
-        ringElement := oiTerm.ringElement;
-        basisIndex := oiTerm.basisIndex;
+    newTerms := new MutableList;
+    for i to #oiTerms - 1 do (
+        ringElement := (oiTerms#i).ringElement;
+        basisIndex := (oiTerms#i).basisIndex;
         newRingElement := algMap ringElement;
         newBasisIndex := f.assignment#basisIndex;
-        newTerms = append(newTerms, makeOITerm(newRingElement, newBasisIndex))
+        newTerms#i = makeOITerm(newRingElement, newBasisIndex)
     );
     
-    getVectorFromOITerms newTerms
+    getVectorFromOITerms toList newTerms
 )
 
 -- Install juxtaposition method for InducedModuleMap and VectorInWidth
@@ -920,7 +929,8 @@ oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
     if #L < 2  then error "Expected a List with at least 2 elements";
 
-    ret := new List;
+    ret := new MutableList;
+    l := 0;
     for i to #L - 2 do (
         f := L#i;
         lotf := leadOITerm f;
@@ -954,14 +964,14 @@ oiPairs List := opts -> L -> (
                         moduleMapFromg := getInducedModuleMap(freeOIModuleFromElement g, oiMapFromg);
 
                         candidate := {moduleMapFromf f, moduleMapFromg g};
-                        if not member(candidate, ret) then ret = append(ret, candidate) -- Avoid duplicates
+                        if not member(candidate, toList ret) then ( ret#l = candidate; l = l + 1 ) -- Avoid duplicates
                     )
                 )
             )
         )
     );
 
-    ret
+    toList ret
 )
 
 -- PURPOSE: Compute a Groebner basis
@@ -973,36 +983,40 @@ oiGB List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then return L;
     
-    ret := L;
+    ret := new MutableList from L;
     addedTotal := 0;
+    encountered := new MutableList;
+    encIndex := 0;
+    retIndex := #ret;
     while true do ( -- Terminates by a Noetherianity argument
-        retTmp := ret;
+        retTmp := toList ret;
 
-        oipairs := oiPairs(ret, Verbose => opts.Verbose);
-        encountered := new List;
+        oipairs := oiPairs(retTmp, Verbose => opts.Verbose);
         addedThisPhase := 0;
         for i to #oipairs - 1 do (
             s := spoly((oipairs#i)#0, (oipairs#i)#1);
-            if member(s, encountered) then continue; -- Skip redundant S-polynomials
-            encountered = append(encountered, s);
+            if member(s, toList encountered) then continue; -- Skip redundant S-polynomials
+            encountered#encIndex = s;
+            encIndex = encIndex + 1;
 
             if opts.Verbose then (
                 print("On pair "|toString (i + 1)|" out of "|toString (#oipairs));
                 print("Elements added so far this phase: "|toString addedThisPhase);
                 print("Elements added total: "|toString addedTotal);
-                print("Dividing "|net s|" by "|net ret)
+                print("Dividing "|net s|" by "|net toList ret)
             );
 
-            rem := remainder(s, ret);
-            if not isZero rem and not member(rem, ret) then (
+            rem := remainder(s, toList ret);
+            if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Remainder: "|net rem);
-                ret = append(ret, rem);
+                ret#retIndex = rem;
+                retIndex = retIndex + 1;
                 addedThisPhase = addedThisPhase + 1;
                 addedTotal = addedTotal + 1
             )
         );
 
-        if ret === retTmp then return ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
+        if toList ret === retTmp then return toList ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
     )
 )
 
@@ -1059,61 +1073,18 @@ restart
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,1,x);
 F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
 installBasisElements(F, 2);
 installBasisElements(F, 3);
 
 F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
 F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
 
-oiGB {f, g} -- takes about 1 hour on my laptop
+oiGB(Verbose => true, {f, g})
 
+-- The above takes about 1 hour on my laptop
+-- The below is a fast small example
 
-f = e_(2, {1}, 1);
-g = e_(3, {2}, 1);
-oiPairs {f, g} -- in width 4: {2,3} and {1,2,4}, {2,4} and {1,2,3}
-                -- in width 3: {2,3} and {1,2,3}
-
-f = e_(2,{2}, 1);
-g = e_(3, {1}, 1);
-oiPairs {f, g} -- only one pair in width 4: {1,2} and {2,3,4}
-
-f = e_(2,{1}, 1);
-oiPairs {f, g} -- in width 4: {1,2} and {1,3,4}, {1,3} and {1,2,4}, {1,4} and {1,2,3}
-                -- in width 3: {1,2} and {1,2,3}, {1,3} and {1,2,3}, {2,3} and {1,2,3}
-
-f = e_(2,{2}, 1);
-g = e_(3, {2}, 1);
-oiPairs {f, g} -- in width 4: {1,3} and {2,3,4}, {2,3} and {1,3,4}
-                -- in width 3: {1,2} and {1,2,3}
-
-g = e_(3,{3}, 1);
-oiPairs {f, g} -- in width 4: {3,4} and {1,2,3}
-
-
-P = makePolynomialOIAlgebra(ZZ/5, 1, x);
-F = makeFreeOIModule(P, e, {1});
-installBasisElements(F, 1);
-f = x_(1,1)^2*e_(1, {1}, 1);
-installBasisElements(F, 2);
-g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1)
-installBasisElements(F, 3);
-h = x_(1,3)*e_(3, {2}, 1) + e_(3, {1}, 1)
-
-
-
-
-
-
-installBasisElements(F, 5);
-f = x_(1,5)^2*e_(5, {2,3}, 1) + x_(1,3)^2*e_(5, {1,3,4}, 2);
-installBasisElements(F, 6);
-F_6;
-g = x_(1,6)*e_(6, {1, 6}, 1) + x_(1,2)*e_(6, {2,4,6}, 2);
-G = makeFreeOIModule(P, d, {5, 6}, DegreeShifts => {-2, -1});
-phi = makeFreeOIModuleMap(F, G, {f, g});
-installBasisElements(G, 7);
-G_7;
-h = x_(1,7)^2*x_(1,6)*d_(7, {1, 3, 4, 5, 7}, 1) + x_(1,5)^3*d_(7, {1, 4, 5, 6, 7}, 1);
-installSchreyerMonomialOrder phi;
-assert(leadOITerm h === (getOITermsFromVector(x_(1,5)^3*d_(7, {1, 4, 5, 6, 7}, 1)))#0);
-isHomogeneous phi
+F_1; f = x_(1,1)^2*e_(1, {1}, 1);
+F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1);
+oiGB({f,g}, Verbose => true)

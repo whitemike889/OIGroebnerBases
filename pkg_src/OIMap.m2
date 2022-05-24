@@ -2,6 +2,9 @@
 -- BEGIN: OIMap.m2 -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+-- Cache for storing OI-maps
+oiMapCache = new MutableHashTable
+
 -- PURPOSE: Define the new type OIMap
 -- COMMENT: Should be of the form {Width => ZZ, assignment => List}
 OIMap = new Type of HashTable
@@ -26,9 +29,18 @@ makeOIMap(ZZ, List) := (n, L) -> new OIMap from {Width => n, assignment => L}
 getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
     if n < m then return {};
-    ret := new List;
-    sets := subsets(set toList(1..n), m);
-    for s in sets do ret = append(ret, new OIMap from {Width => n, assignment => sort toList s});
+    
+    -- Return the maps if they already exist
+    if oiMapCache#?(m, n) then return oiMapCache#(m, n);
+
+    ret := new MutableList;
+    sets := subsets(toList(1..n), m);
+    for i to #sets - 1 do ret#i = new OIMap from {Width => n, assignment => sets#i};
+    ret = toList ret;
+
+    -- Store the maps
+    oiMapCache#(m, n) = ret;
+
     ret
 )
 
@@ -38,9 +50,9 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
     if not #f.assignment == g.Width then error "Maps cannot be composed due to incompatible source and target";
-    L := new List;
-    for i to #g.assignment - 1 do L = append(L, f.assignment#(g.assignment#i - 1));
-    new OIMap from {Width => f.Width, assignment => L}
+    L := new MutableList;
+    for i to #g.assignment - 1 do L#i = f.assignment#(g.assignment#i - 1);
+    new OIMap from {Width => f.Width, assignment => toList L}
 )
 
 --------------------------------------------------------------------------------

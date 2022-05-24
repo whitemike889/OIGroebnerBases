@@ -84,18 +84,19 @@ getOITermsFromVector VectorInWidth := f -> (
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
-    termList := new List;
+    termList := new MutableList;
     entryList := entries f;
 
+    k := 0;
     for i to #entryList - 1 do (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
         termsInEntry := terms entryList#i;
-        for term in termsInEntry do termList = append(termList, makeOITerm(term, basisElement.basisIndex))
+        for term in termsInEntry do ( termList#k = makeOITerm(term, basisElement.basisIndex); k = k + 1 )
     );
 
-    reverse sort termList
+    reverse sort toList termList
 )
 
 -- PURPOSE: Same as getOITermsFromVector but combines terms of the same basis element
@@ -107,17 +108,19 @@ getCombinedOITermsFromVector VectorInWidth := f -> (
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
-    termList := new List;
+    termList := new MutableList;
     entryList := entries f;
 
+    k := 0;
     for i to #entryList - 1 do (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
-        termList = append(termList, makeOITerm(entryList#i, basisElement.basisIndex))
+        termList#k = makeOITerm(entryList#i, basisElement.basisIndex);
+        k = k + 1
     );
 
-    reverse sort termList
+    reverse sort toList termList
 )
 
 -- PURPOSE: Convert an element from a list of OITerms to vector form
@@ -186,15 +189,6 @@ oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, lea
 
 -- Get the least common multiple of two OITerms
 lcm(OITerm, OITerm) := (f, g) -> (
-    Widthf := f.basisIndex.oiMap.Width;
-    Widthg := g.basisIndex.oiMap.Width;
-    if not Widthf == Widthg then error "OITerms must belong to the same width";
-    freeOIModf := f.basisIndex.freeOIMod;
-    freeOIModg := g.basisIndex.freeOIMod;
-    if not freeOIModf === freeOIModg then error "OITerms must belong to the same free OI-module";
-
-    freeMod := getFreeModuleInWidth(freeOIModf, Widthf);
-
     if not f.basisIndex === g.basisIndex then return makeOITerm(0, f.basisIndex);
 
     makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)

@@ -78,12 +78,13 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     n := f.Width;
     src := getAlgebraInWidth(P, m);
     targ := getAlgebraInWidth(P, n);
-    subs := new List;
+    subs := new MutableList;
+    k := 0;
     for j from 1 to m do
-        for i from 1 to P.varRows do subs = append(subs, src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))));
+        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k+1 );
     
     -- Make the map
-    ret := map(targ, src, subs);
+    ret := map(targ, src, toList subs);
 
     -- Store the map
     P.maps#(f.Width, f.assignment) = ret;
@@ -99,11 +100,11 @@ getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := (P, m, n) -> (
     if n < m then return {};
     
     -- Get the maps
-    ret := new List;
+    ret := new MutableList;
     oiMaps := getOIMaps(m, n);
-    for oiMap in oiMaps do ret = append(ret, getInducedAlgebraMap(P, oiMap));
+    for i to #oiMaps - 1 do ret#i = getInducedAlgebraMap(P, oiMaps#i);
 
-    ret
+    toList ret
 )
 
 --------------------------------------------------------------------------------

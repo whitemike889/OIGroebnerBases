@@ -105,20 +105,22 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
 
     -- Generate the degrees
     alg := getAlgebraInWidth(F.polyOIAlg, n);
-    degList := new List;
-    for i to #F.genWidths - 1 do degList = append(degList, binomial(n, F.genWidths#i) : F.degShifts#i);
+    degList := new MutableList;
+    for i to #F.genWidths - 1 do degList#i = binomial(n, F.genWidths#i) : F.degShifts#i;
 
     -- Make the module
-    retHash := new MutableHashTable from alg^degList;
+    retHash := new MutableHashTable from alg^(toList degList);
     retHash.Width = n;
     retHash.freeOIMod = F;
-    retHash.basisElements = new List;
     
     -- Generate the basis elements
+    k := 0;
+    mutableBasisElements := new MutableList;
     for i to #F.genWidths - 1 do (
         oiMaps := getOIMaps(F.genWidths#i, n);
-        for oiMap in oiMaps do retHash.basisElements = append(retHash.basisElements, makeBasisElement makeBasisIndex(F, oiMap, i + 1))
+        for oiMap in oiMaps do ( mutableBasisElements#k = makeBasisElement makeBasisIndex(F, oiMap, i + 1); k = k + 1 )
     );
+    retHash.basisElements = toList mutableBasisElements;
 
     ret := new ModuleInWidth of VectorInWidth from retHash;
 

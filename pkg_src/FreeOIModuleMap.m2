@@ -31,19 +31,19 @@ FreeOIModuleMap List := (f, oiTerms) -> (
     if #oiTerms == 0 then error "Cannot apply FreeOIModuleMap to an empty list";
 
     -- Generate the new terms
-    newTerms := new List;
-    for oiTerm in oiTerms do (
-        ringElement := oiTerm.ringElement;
-        basisIndex := oiTerm.basisIndex;
+    newTerms := new MutableList;
+    for i to #oiTerms - 1 do (
+        ringElement := (oiTerms#i).ringElement;
+        basisIndex := (oiTerms#i).basisIndex;
         oiMap := basisIndex.oiMap;
         idx := basisIndex.idx;
         inducedModuleMap := getInducedModuleMap(f.targMod, oiMap);
-        newTerms = append(newTerms, ringElement * inducedModuleMap(f.genImages#(idx - 1))) -- x*d_(pi,i) ---> x*F(pi)(b_i)
+        newTerms#i = ringElement * inducedModuleMap(f.genImages#(idx - 1)) -- x*d_(pi,i) ---> x*F(pi)(b_i)
     );
 
     -- Sum the terms up
     ret := newTerms#0;
-    for i from 1 to #newTerms - 1 do ret = ret + ret#i;
+    for i from 1 to #newTerms - 1 do ret = ret + newTerms#i;
     ret
 )
 

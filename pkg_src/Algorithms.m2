@@ -64,7 +64,8 @@ oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
     if #L < 2  then error "Expected a List with at least 2 elements";
 
-    ret := new List;
+    ret := new MutableList;
+    l := 0;
     for i to #L - 2 do (
         f := L#i;
         lotf := leadOITerm f;
@@ -98,14 +99,14 @@ oiPairs List := opts -> L -> (
                         moduleMapFromg := getInducedModuleMap(freeOIModuleFromElement g, oiMapFromg);
 
                         candidate := {moduleMapFromf f, moduleMapFromg g};
-                        if not member(candidate, ret) then ret = append(ret, candidate) -- Avoid duplicates
+                        if not member(candidate, toList ret) then ( ret#l = candidate; l = l + 1 ) -- Avoid duplicates
                     )
                 )
             )
         )
     );
 
-    ret
+    toList ret
 )
 
 -- PURPOSE: Compute a Groebner basis
@@ -117,36 +118,40 @@ oiGB List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then return L;
     
-    ret := L;
+    ret := new MutableList from L;
     addedTotal := 0;
+    encountered := new MutableList;
+    encIndex := 0;
+    retIndex := #ret;
     while true do ( -- Terminates by a Noetherianity argument
-        retTmp := ret;
+        retTmp := toList ret;
 
-        oipairs := oiPairs(ret, Verbose => opts.Verbose);
-        encountered := new List;
+        oipairs := oiPairs(retTmp, Verbose => opts.Verbose);
         addedThisPhase := 0;
         for i to #oipairs - 1 do (
             s := spoly((oipairs#i)#0, (oipairs#i)#1);
-            if member(s, encountered) then continue; -- Skip redundant S-polynomials
-            encountered = append(encountered, s);
+            if member(s, toList encountered) then continue; -- Skip redundant S-polynomials
+            encountered#encIndex = s;
+            encIndex = encIndex + 1;
 
             if opts.Verbose then (
                 print("On pair "|toString (i + 1)|" out of "|toString (#oipairs));
                 print("Elements added so far this phase: "|toString addedThisPhase);
                 print("Elements added total: "|toString addedTotal);
-                print("Dividing "|net s|" by "|net ret)
+                print("Dividing "|net s|" by "|net toList ret)
             );
 
-            rem := remainder(s, ret);
-            if not isZero rem and not member(rem, ret) then (
+            rem := remainder(s, toList ret);
+            if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Remainder: "|net rem);
-                ret = append(ret, rem);
+                ret#retIndex = rem;
+                retIndex = retIndex + 1;
                 addedThisPhase = addedThisPhase + 1;
                 addedTotal = addedTotal + 1
             )
         );
 
-        if ret === retTmp then return ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
+        if toList ret === retTmp then return toList ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
     )
 )
 
