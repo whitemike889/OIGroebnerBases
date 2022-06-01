@@ -1,7 +1,3 @@
---------------------------------------------------------------------------------
--- BEGIN: FreeOIModule.m2 ------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type FreeOIModule
 -- COMMENT: Should be of the form {polyOIAlg => PolynomialOIAlgebra, basisSym => Symbol, genWidths => List, degShifts => List, monOrder => MutableList, modules => MutableHashTable, maps => MutableHashTable}
 FreeOIModule = new Type of HashTable
@@ -48,7 +44,6 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 -- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
 -- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
 ModuleInWidth = new Type of Module
-ModuleInWidth.synonym = "module in a specified width"
 
 net ModuleInWidth := M -> (
     rawMod := new Module from M;
@@ -58,7 +53,6 @@ net ModuleInWidth := M -> (
 -- Define the new type VectorInWidth
 -- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
 VectorInWidth = new Type of Vector
-VectorInWidth.synonym = "vector in a specified width"
 
 -- PURPOSE: Check if a VectorInWidth is zero
 -- INPUT: A VectorInWidth 'f'
@@ -183,7 +177,3 @@ widthOfElement VectorInWidth := f -> (class f).Width
 -- OUTPUT: The FreeOIModule containing f
 freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
 freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
-
---------------------------------------------------------------------------------
--- END: FreeOIModule.m2 --------------------------------------------------------
---------------------------------------------------------------------------------

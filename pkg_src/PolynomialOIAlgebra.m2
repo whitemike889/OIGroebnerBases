@@ -1,7 +1,3 @@
---------------------------------------------------------------------------------
--- BEGIN: PolynomialOIAlgebra.m2 -----------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type PolynomialOIAlgebra
 -- COMMENT: Should be of the form {baseField => Ring, varRows => ZZ, varSym => Symbol, algebras => MutableHashTable, maps => MutableHashTable}
 PolynomialOIAlgebra = new Type of HashTable
@@ -29,10 +25,7 @@ makePolynomialOIAlgebra(Ring, ZZ, Symbol) := (K, c, x) ->
 -- INPUT: '(P, n, i, j)', a PolynomialOIAlgebra 'P', an integer 'n', a row 'i' and a column 'j'
 -- OUTPUT: The index of x_(i,j) in the list of variables ordered so that in P_n we have x_(i,j) > x_(i',j') iff j > j' or j = j' and i > i'
 linearFromRowCol = method(TypicalValue => ZZ)
-linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := (P, n, i, j) -> (
-    if n == 0 then return null;
-    P.varRows * (n - j + 1) - i
-)
+linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := (P, n, i, j) -> P.varRows * (n - j + 1) - i
 
 -- PURPOSE: Get the algebra from a PolynomialOIAlgebra in a specified width
 -- INPUT: '(P, n)', a PolynomialOIAlgebra 'P' and a width 'n'
@@ -81,7 +74,7 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     subs := new MutableList;
     k := 0;
     for j from 1 to m do
-        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k+1 );
+        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k + 1 );
     
     -- Make the map
     ret := map(targ, src, toList subs);
@@ -106,7 +99,3 @@ getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := (P, m, n) -> (
 
     toList ret
 )
-
---------------------------------------------------------------------------------
--- END: PolynomialOIAlgebra.m2 -------------------------------------------------
---------------------------------------------------------------------------------

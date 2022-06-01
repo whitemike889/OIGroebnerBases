@@ -1,13 +1,7 @@
---------------------------------------------------------------------------------
--- BEGIN: Terms.m2 -------------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type BasisIndex
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
 BasisIndex = new Type of HashTable
 BasisIndex.synonym = "basis index"
-
-net BasisIndex := b -> net makeBasisElement b
 
 -- PURPOSE: Make a new BasisIndex
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
@@ -196,7 +190,3 @@ lcm(OITerm, OITerm) := (f, g) -> (
 
 -- Check if an OITerm is zero
 isZero OITerm := f -> f.ringElement == 0
-
---------------------------------------------------------------------------------
--- END: Terms.m2 ---------------------------------------------------------------
---------------------------------------------------------------------------------

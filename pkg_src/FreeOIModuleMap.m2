@@ -1,7 +1,3 @@
---------------------------------------------------------------------------------
--- BEGIN: FreeOIModuleMap.m2 ---------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type FreeOIModuleMap
 -- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, genImages => List}
 -- COMMENT: genImages should be a list of the images of the generators of srcMod
@@ -62,7 +58,3 @@ isHomogeneous FreeOIModuleMap := f -> (
     for elt in f.genImages do if not isHomogeneous elt then return false;
     -f.srcMod.degShifts == flatten apply(f.genImages, degree)
 )
-
---------------------------------------------------------------------------------
--- END: FreeOIModuleMap.m2 -----------------------------------------------------
---------------------------------------------------------------------------------

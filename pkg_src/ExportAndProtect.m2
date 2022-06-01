@@ -17,7 +17,7 @@ export {
     "PolynomialOIAlgebra",
 
     -- Methods
-    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps", "linearFromRowCol",
+    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps",
 
     ------------------------------------
     -- From FreeOIModuleMap.m2 ---------
@@ -34,17 +34,17 @@ export {
     ------------------------------------
 
     -- Types
-    "BasisIndex", "OITerm",
+    "OITerm", "BasisIndex",
 
     -- Methods
-    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "getCombinedOITermsFromVector", "leadOITerm", "getVectorFromOITerms", "oiDivides",
+    "makeOITerm", "makeBasisIndex", "leadOITerm", "oiDivides",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
     ------------------------------------
 
     -- Types
-    "FreeOIModule", "VectorInWidth", "ModuleInWidth",
+    "FreeOIModule",
 
     -- Methods
     "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",

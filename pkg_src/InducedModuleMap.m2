@@ -1,7 +1,3 @@
---------------------------------------------------------------------------------
--- BEGIN: InducedModuleMap.m2 --------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type InducedModuleMap
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, assignment => HashTable}
 -- COMMENT: assignment should specify how a BasisIndex in the source free module gets mapped to a basis index in the target free module
@@ -85,7 +81,3 @@ InducedModuleMap VectorInWidth := (f, v) -> (
 
     f getOITermsFromVector v
 )
-
---------------------------------------------------------------------------------
--- END: InducedModuleMap.m2 ----------------------------------------------------
---------------------------------------------------------------------------------

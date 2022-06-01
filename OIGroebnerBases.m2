@@ -42,7 +42,7 @@ export {
     "PolynomialOIAlgebra",
 
     -- Methods
-    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps", "linearFromRowCol",
+    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap", "getInducedAlgebraMaps",
 
     ------------------------------------
     -- From FreeOIModuleMap.m2 ---------
@@ -59,17 +59,17 @@ export {
     ------------------------------------
 
     -- Types
-    "BasisIndex", "OITerm",
+    "OITerm", "BasisIndex",
 
     -- Methods
-    "makeBasisIndex", "makeOITerm", "makeBasisElement", "getOITermsFromVector", "getCombinedOITermsFromVector", "leadOITerm", "getVectorFromOITerms", "oiDivides",
+    "makeOITerm", "makeBasisIndex", "leadOITerm", "oiDivides",
 
     ------------------------------------
     -- From FreeOIModule.m2 ------------
     ------------------------------------
 
     -- Types
-    "FreeOIModule", "VectorInWidth", "ModuleInWidth",
+    "FreeOIModule",
 
     -- Methods
     "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
@@ -139,10 +139,6 @@ scan({
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
---------------------------------------------------------------------------------
--- BEGIN: OIMap.m2 -------------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Cache for storing OI-maps
 oiMapCache = new MutableHashTable
 
@@ -196,14 +192,6 @@ composeOIMaps(OIMap, OIMap) := (f, g) -> (
     new OIMap from {Width => f.Width, assignment => toList L}
 )
 
---------------------------------------------------------------------------------
--- END: OIMap.m2 ---------------------------------------------------------------
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- BEGIN: PolynomialOIAlgebra.m2 -----------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type PolynomialOIAlgebra
 -- COMMENT: Should be of the form {baseField => Ring, varRows => ZZ, varSym => Symbol, algebras => MutableHashTable, maps => MutableHashTable}
 PolynomialOIAlgebra = new Type of HashTable
@@ -231,10 +219,7 @@ makePolynomialOIAlgebra(Ring, ZZ, Symbol) := (K, c, x) ->
 -- INPUT: '(P, n, i, j)', a PolynomialOIAlgebra 'P', an integer 'n', a row 'i' and a column 'j'
 -- OUTPUT: The index of x_(i,j) in the list of variables ordered so that in P_n we have x_(i,j) > x_(i',j') iff j > j' or j = j' and i > i'
 linearFromRowCol = method(TypicalValue => ZZ)
-linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := (P, n, i, j) -> (
-    if n == 0 then return null;
-    P.varRows * (n - j + 1) - i
-)
+linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := (P, n, i, j) -> P.varRows * (n - j + 1) - i
 
 -- PURPOSE: Get the algebra from a PolynomialOIAlgebra in a specified width
 -- INPUT: '(P, n)', a PolynomialOIAlgebra 'P' and a width 'n'
@@ -283,7 +268,7 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     subs := new MutableList;
     k := 0;
     for j from 1 to m do
-        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k+1 );
+        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k + 1 );
     
     -- Make the map
     ret := map(targ, src, toList subs);
@@ -308,14 +293,6 @@ getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := (P, m, n) -> (
 
     toList ret
 )
-
---------------------------------------------------------------------------------
--- END: PolynomialOIAlgebra.m2 -------------------------------------------------
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- BEGIN: FreeOIModule.m2 ------------------------------------------------------
---------------------------------------------------------------------------------
 
 -- Define the new type FreeOIModule
 -- COMMENT: Should be of the form {polyOIAlg => PolynomialOIAlgebra, basisSym => Symbol, genWidths => List, degShifts => List, monOrder => MutableList, modules => MutableHashTable, maps => MutableHashTable}
@@ -363,7 +340,6 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 -- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
 -- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
 ModuleInWidth = new Type of Module
-ModuleInWidth.synonym = "module in a specified width"
 
 net ModuleInWidth := M -> (
     rawMod := new Module from M;
@@ -373,7 +349,6 @@ net ModuleInWidth := M -> (
 -- Define the new type VectorInWidth
 -- COMMENT: An instance f should have class f === (corresponding ModuleInWidth)
 VectorInWidth = new Type of Vector
-VectorInWidth.synonym = "vector in a specified width"
 
 -- PURPOSE: Check if a VectorInWidth is zero
 -- INPUT: A VectorInWidth 'f'
@@ -384,10 +359,6 @@ isZero VectorInWidth := f -> (
     Width := widthOfElement f;
     f === 0_(getFreeModuleInWidth(freeOIMod, Width))
 )
-
---------------------------------------------------------------------------------
--- BEGIN: FreeOIModuleMap.m2 ---------------------------------------------------
---------------------------------------------------------------------------------
 
 -- Define the new type FreeOIModuleMap
 -- COMMENT: Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, genImages => List}
@@ -450,10 +421,6 @@ isHomogeneous FreeOIModuleMap := f -> (
     -f.srcMod.degShifts == flatten apply(f.genImages, degree)
 )
 
---------------------------------------------------------------------------------
--- END: FreeOIModuleMap.m2 -----------------------------------------------------
---------------------------------------------------------------------------------
-
 -- PURPOSE: Install a Schreyer monomial order on a FreeOIModule
 -- INPUT: A FreeOIModuleMap 'f'
 -- OUTPUT: Sets f.srcMod.monOrder#0 to f
@@ -475,16 +442,10 @@ net VectorInWidth := f -> (
 -- COMMENT: Compares vectors by looking at their lead terms
 VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
 
---------------------------------------------------------------------------------
--- BEGIN: Terms.m2 -------------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type BasisIndex
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
 BasisIndex = new Type of HashTable
 BasisIndex.synonym = "basis index"
-
-net BasisIndex := b -> net makeBasisElement b
 
 -- PURPOSE: Make a new BasisIndex
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
@@ -674,10 +635,6 @@ lcm(OITerm, OITerm) := (f, g) -> (
 -- Check if an OITerm is zero
 isZero OITerm := f -> f.ringElement == 0
 
---------------------------------------------------------------------------------
--- END: Terms.m2 ---------------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- PURPOSE: Get the free module from a FreeOIModule in a specified width
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'
 -- OUTPUT: F_n, the width n free module of F
@@ -767,14 +724,6 @@ widthOfElement VectorInWidth := f -> (class f).Width
 freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
 freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
 
---------------------------------------------------------------------------------
--- END: FreeOIModule.m2 --------------------------------------------------------
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- BEGIN: InducedModuleMap.m2 --------------------------------------------------
---------------------------------------------------------------------------------
-
 -- Define the new type InducedModuleMap
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, assignment => HashTable}
 -- COMMENT: assignment should specify how a BasisIndex in the source free module gets mapped to a basis index in the target free module
@@ -859,14 +808,6 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     f getOITermsFromVector v
 )
 
---------------------------------------------------------------------------------
--- END: InducedModuleMap.m2 ----------------------------------------------------
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- BEGIN: Algorithms.m2 --------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- PURPOSE: Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
 -- INPUT: '(f, L)', a VectorInWidth 'f' and a List 'L'
 -- OUTPUT: A remainder of f modulo L
@@ -924,7 +865,7 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 -- PURPOSE: Generate a List of OI-pairs from a List of VectorInWidths
 -- INPUT: A List 'L'
 -- OUTPUT: A List of OI-pairs made from L
--- COMMENT: Slow. This is the main bottleneck. Need to optimize.
+-- COMMENT: Slow. This is the main bottleneck.
 oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
     if #L < 2  then error "Expected a List with at least 2 elements";
@@ -978,41 +919,50 @@ oiPairs List := opts -> L -> (
 -- INPUT: A List 'L' of VectorInWidths
 -- OUTPUT: A Groebner basis made from L
 -- COMMENT: Uses the OI-Buchberger's Algorithm
-oiGB = method(TypicalValue => List, Options => {Verbose => false})
+-- COMMENT: "Verbose => true" will print more info
+-- COMMENT: "Strategy => 1" recalculates the OI-pairs every time a nonzero remainder is found
+-- COMMENT: "Strategy => 2" adds all nonzero remainders before recalculating the OI-pairs
+oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1})
 oiGB List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then return L;
     
     ret := new MutableList from L;
-    addedTotal := 0;
     encountered := new MutableList;
+    addedTotal := 0;
     encIndex := 0;
     retIndex := #ret;
-    while true do ( -- Terminates by a Noetherianity argument
+    
+    -- Enter the main loop: terminates by an equivariant Noetherianity argument
+    while true do (
         retTmp := toList ret;
+        addedThisPhase := 0;
 
         oipairs := oiPairs(retTmp, Verbose => opts.Verbose);
-        addedThisPhase := 0;
         for i to #oipairs - 1 do (
-            s := spoly((oipairs#i)#0, (oipairs#i)#1);
-            if member(s, toList encountered) then continue; -- Skip redundant S-polynomials
+            s := spoly(oipairs#i#0, oipairs#i#1);
+
+            if isZero s or member(s, toList encountered) then continue; -- Skip zero and redundant S-polynomials
             encountered#encIndex = s;
             encIndex = encIndex + 1;
 
             if opts.Verbose then (
                 print("On pair "|toString (i + 1)|" out of "|toString (#oipairs));
-                print("Elements added so far this phase: "|toString addedThisPhase);
+                if opts.Strategy == 2 then print("Elements added so far this phase: "|toString addedThisPhase);
                 print("Elements added total: "|toString addedTotal);
                 print("Dividing "|net s|" by "|net toList ret)
             );
 
             rem := remainder(s, toList ret);
             if not isZero rem and not member(rem, toList ret) then (
-                if opts.Verbose then print("Remainder: "|net rem);
+                if opts.Verbose then print("Nonzero remainder: "|net rem);
                 ret#retIndex = rem;
                 retIndex = retIndex + 1;
+
                 addedThisPhase = addedThisPhase + 1;
-                addedTotal = addedTotal + 1
+                addedTotal = addedTotal + 1;
+
+                if opts.Strategy == 1 then break
             )
         );
 
@@ -1033,10 +983,6 @@ isOIGB List := L -> (
     
     true
 )
-
---------------------------------------------------------------------------------
--- END: Algorithms.m2 ----------------------------------------------------------
---------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -1076,15 +1022,24 @@ F = makeFreeOIModule(P, e, {1});
 installBasisElements(F, 1);
 installBasisElements(F, 2);
 installBasisElements(F, 3);
+installBasisElements(F, 4);
 
+-- Time: ~18sec with Strategy => 2, ~9sec with Strategy => 1
+F_1; f = x_(1,1)^2*e_(1, {1}, 1) + x_(1,1)^3*e_(1, {1}, 1);
+F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {1}, 1);
+F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {2}, 1);
+oiGB({f, g, h}, Verbose => true)
+
+-- Time: ~43sec with Strategy => 2, ~168sec with Strategy => 1
+F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1);
+oiGB({f, g, h}, Verbose => true)
+
+-- Time: ~1hr
 F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
 F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
-
 oiGB(Verbose => true, {f, g})
 
--- The above takes about 1 hour on my laptop
--- The below is a fast small example
-
-F_1; f = x_(1,1)^2*e_(1, {1}, 1);
-F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1);
-oiGB({f,g}, Verbose => true)
+-- Time: instant
+F_1; f = x_(1,1)^2*e_(1,{1}, 1)+x_(1,1)^3*e_(1,{1},1);
+F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
+oiGB({f, h}, Verbose => true)

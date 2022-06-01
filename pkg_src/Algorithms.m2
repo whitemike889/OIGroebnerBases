@@ -1,7 +1,3 @@
---------------------------------------------------------------------------------
--- BEGIN: Algorithms.m2 --------------------------------------------------------
---------------------------------------------------------------------------------
-
 -- PURPOSE: Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
 -- INPUT: '(f, L)', a VectorInWidth 'f' and a List 'L'
 -- OUTPUT: A remainder of f modulo L
@@ -59,7 +55,7 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 -- PURPOSE: Generate a List of OI-pairs from a List of VectorInWidths
 -- INPUT: A List 'L'
 -- OUTPUT: A List of OI-pairs made from L
--- COMMENT: Slow. This is the main bottleneck. Need to optimize.
+-- COMMENT: Slow. This is the main bottleneck.
 oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
     if #L < 2  then error "Expected a List with at least 2 elements";
@@ -113,41 +109,50 @@ oiPairs List := opts -> L -> (
 -- INPUT: A List 'L' of VectorInWidths
 -- OUTPUT: A Groebner basis made from L
 -- COMMENT: Uses the OI-Buchberger's Algorithm
-oiGB = method(TypicalValue => List, Options => {Verbose => false})
+-- COMMENT: "Verbose => true" will print more info
+-- COMMENT: "Strategy => 1" recalculates the OI-pairs every time a nonzero remainder is found
+-- COMMENT: "Strategy => 2" adds all nonzero remainders before recalculating the OI-pairs
+oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1})
 oiGB List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then return L;
     
     ret := new MutableList from L;
-    addedTotal := 0;
     encountered := new MutableList;
+    addedTotal := 0;
     encIndex := 0;
     retIndex := #ret;
-    while true do ( -- Terminates by a Noetherianity argument
+    
+    -- Enter the main loop: terminates by an equivariant Noetherianity argument
+    while true do (
         retTmp := toList ret;
+        addedThisPhase := 0;
 
         oipairs := oiPairs(retTmp, Verbose => opts.Verbose);
-        addedThisPhase := 0;
         for i to #oipairs - 1 do (
-            s := spoly((oipairs#i)#0, (oipairs#i)#1);
-            if member(s, toList encountered) then continue; -- Skip redundant S-polynomials
+            s := spoly(oipairs#i#0, oipairs#i#1);
+
+            if isZero s or member(s, toList encountered) then continue; -- Skip zero and redundant S-polynomials
             encountered#encIndex = s;
             encIndex = encIndex + 1;
 
             if opts.Verbose then (
                 print("On pair "|toString (i + 1)|" out of "|toString (#oipairs));
-                print("Elements added so far this phase: "|toString addedThisPhase);
+                if opts.Strategy == 2 then print("Elements added so far this phase: "|toString addedThisPhase);
                 print("Elements added total: "|toString addedTotal);
                 print("Dividing "|net s|" by "|net toList ret)
             );
 
             rem := remainder(s, toList ret);
             if not isZero rem and not member(rem, toList ret) then (
-                if opts.Verbose then print("Remainder: "|net rem);
+                if opts.Verbose then print("Nonzero remainder: "|net rem);
                 ret#retIndex = rem;
                 retIndex = retIndex + 1;
+
                 addedThisPhase = addedThisPhase + 1;
-                addedTotal = addedTotal + 1
+                addedTotal = addedTotal + 1;
+
+                if opts.Strategy == 1 then break
             )
         );
 
@@ -168,7 +173,3 @@ isOIGB List := L -> (
     
     true
 )
-
---------------------------------------------------------------------------------
--- END: Algorithms.m2 ----------------------------------------------------------
---------------------------------------------------------------------------------
