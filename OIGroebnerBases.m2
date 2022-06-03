@@ -925,7 +925,7 @@ oiPairs List := opts -> L -> (
 oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1})
 oiGB List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
-    if #L == 1 then return L;
+    if #L == 1 then if isZero L#0 then return false else return L;
     
     ret := new MutableList from L;
     encountered := new MutableList;
@@ -976,10 +976,17 @@ oiGB List := opts -> L -> (
 isOIGB = method(TypicalValue => Boolean)
 isOIGB List := L -> (
     if #L == 0 then return false;
-    if #L == 1 then return true;
+    if #L == 1 then if isZero L#0 then return false else return true;
 
-    for pair in oiPairs L do
-        if not isZero remainder(spoly(pair#0, pair#1), L) then return false; -- If L were a GB, every element would have a unique remainder of zero
+    encountered := new MutableList;
+    encIndex := 0;
+    for pair in oiPairs L do (
+        s := spoly(pair#0, pair#1);
+        if isZero s or member(s, toList encountered) then continue;
+        encountered#encIndex = s;
+        encIndex = encIndex + 1;
+        if not isZero remainder(s, L) then return false -- If L were a GB, then every element would have a unique remainder of zero
+    );
     
     true
 )
