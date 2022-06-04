@@ -964,7 +964,7 @@ oiSyz(List, Symbol) := (L, d) -> (
     shifts := for elt in L list -degree elt; -- Calculate the degree shifts
     widths := for elt in L list widthOfElement elt; -- Get the widths
     G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => shifts);
-    G
+    G -- WORK IN PROGRESS
 )
 
 --------------------------------------------------------------------------------
