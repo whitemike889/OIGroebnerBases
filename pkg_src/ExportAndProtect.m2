@@ -17,7 +17,7 @@ export {
     "makeOITerm", "makeBasisIndex", "leadOITerm", "oiDivides",
     "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
     "getInducedModuleMap", "getInducedModuleMaps",
-    "spoly", "oiPairs", "oiGB", "isOIGB"
+    "oiRemainder", "spoly", "oiPairs", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz"
 }
 
 scan({

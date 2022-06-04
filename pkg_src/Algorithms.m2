@@ -1,7 +1,8 @@
 -- PURPOSE: Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
 -- INPUT: '(f, L)', a VectorInWidth 'f' and a List 'L'
 -- OUTPUT: A remainder of f modulo L
-remainder(VectorInWidth, List) := (f, L) -> (
+oiRemainder = method(TypicalValue => VectorInWidth)
+oiRemainder(VectorInWidth, List) := (f, L) -> (
     if #L == 0 then error "Expected nonempty List";
 
     if isZero f then return f;
@@ -105,6 +106,9 @@ oiPairs List := opts -> L -> (
     toList ret
 )
 
+-- Cache for storing OI-Groebner bases
+oiGBCache = new MutableHashTable
+
 -- PURPOSE: Compute a Groebner basis
 -- INPUT: A List 'L' of VectorInWidths
 -- OUTPUT: A Groebner basis made from L
@@ -112,8 +116,15 @@ oiPairs List := opts -> L -> (
 -- COMMENT: "Verbose => true" will print more info
 -- COMMENT: "Strategy => 1" recalculates the OI-pairs every time a nonzero remainder is found
 -- COMMENT: "Strategy => 2" adds all nonzero remainders before recalculating the OI-pairs
-oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1})
+-- COMMENT: "Minimize => false" will not minimize the basis at the end
+oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1, Minimize => true})
 oiGB List := opts -> L -> (
+
+    if not (opts.Strategy == 1 or opts.Strategy == 2) then error "Expected Strategy => 1 or Strategy => 2";
+
+    -- Return the GB if it already exists
+    if oiGBCache#?(L, opts.Strategy, opts.Minimize) then return oiGBCache#(L, opts.Strategy, opts.Minimize);
+
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then if isZero L#0 then return false else return L;
     
@@ -143,7 +154,7 @@ oiGB List := opts -> L -> (
                 print("Dividing "|net s|" by "|net toList ret)
             );
 
-            rem := remainder(s, toList ret);
+            rem := oiRemainder(s, toList ret);
             if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Nonzero remainder: "|net rem);
                 ret#retIndex = rem;
@@ -156,8 +167,38 @@ oiGB List := opts -> L -> (
             )
         );
 
-        if toList ret === retTmp then return toList ret -- No new elements were added so we're done by the OI-Buchberger's Criterion
-    )
+        if toList ret === retTmp then break -- No new elements were added so we're done by the OI-Buchberger's Criterion
+    );
+
+    -- Minimize the basis
+    local finalRet;
+    if opts.Minimize then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret;
+
+    -- Store the basis
+    oiGBCache#(L, opts.Strategy, opts.Minimize) = finalRet;
+
+    finalRet
+)
+
+-- PURPOSE: Minimize an OI-Groebner basis
+-- INPUT: A List 'L'
+-- OUTPUT: Assuming L is an OI-Groebner basis, returns a minimized basis made from L
+-- COMMENT: "Minimal" in the sense of lt(p) not in <lt(L - {p})> for all p in L
+minimizeOIGB = method(TypicalValue => List, Options => {Verbose => false})
+minimizeOIGB List := opts -> L -> (
+    if opts.Verbose then print "Minimizing...";
+    tmp := new MutableList;
+    k := 0;
+    for p in L do (
+        isRedundant := false;
+
+        retMinusp := (set L) - set {p};
+        for elt in toList retMinusp do if instance(oiDivides(p, elt), List) then (if opts.Verbose then print("Found redundant element: "|net p); isRedundant = true; break);
+
+        if not isRedundant then (tmp#k = p; k = k + 1)
+    );
+
+    toList tmp
 )
 
 -- PURPOSE: Check if a List is an OI-Groebner basis
@@ -175,8 +216,22 @@ isOIGB List := L -> (
         if isZero s or member(s, toList encountered) then continue;
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        if not isZero remainder(s, L) then return false -- If L were a GB, then every element would have a unique remainder of zero
+        if not isZero oiRemainder(s, L) then return false -- If L were a GB, then every element would have a unique remainder of zero
     );
     
     true
+)
+
+-- PURPOSE: Compute an OI-Groebner basis for the syzygy module of a List of VectorInWidths
+-- INPUT: '(L, d)', a List 'L' of VectorInWidths and a basis Symbol 'd'
+-- OUTPUT: Assuming L is an OI-Groebner basis, outputs an OI-Groebner basis for the syzygy module of L
+-- COMMENT: Uses the OI-Schreyer's Theorem
+oiSyz = method(TypicalValue => List)
+oiSyz(List, Symbol) := (L, d) -> (
+    if #L == 0 then error "Expected a nonempty list";
+    freeOIMod := freeOIModuleFromElement L#0; -- Get the free OI-module
+    shifts := for elt in L list -degree elt; -- Calculate the degree shifts
+    widths := for elt in L list widthOfElement elt; -- Get the widths
+    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => shifts);
+    G -- WORK IN PROGRESS
 )
