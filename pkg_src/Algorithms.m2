@@ -1,24 +1,31 @@
 -- PURPOSE: Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
 -- INPUT: '(f, L)', a VectorInWidth 'f' and a List 'L'
--- OUTPUT: A remainder of f modulo L
-oiRemainder = method(TypicalValue => VectorInWidth)
-oiRemainder(VectorInWidth, List) := (f, L) -> (
+-- OUTPUT: A HashTable of the form {quo => VectorInWidth, rem => VectorInWidth, triples => List} where triples is a List describing how the quotient is constructed
+-- COMMENT: If the elements of L are {l0, l1, l2} then triples may look like {{ringElt1, oiMap1, 0}, {ringElt2, oiMap2, 2}} and quo = ringElt1*F(oiMap1)(l0)+ringElt2*F(oiMap2)(l2)
+oiPolyDiv = method(TypicalValue => HashTable)
+oiPolyDiv(VectorInWidth, List) := (f, L) -> (
     if #L == 0 then error "Expected nonempty List";
 
-    if isZero f then return f;
+    if isZero f then return new HashTable from {quo => f, rem => f, triples => {}};
 
-    rem := f;
+    local retTmp;
+    retTmp = new MutableHashTable from {quo => 0_(class f), rem => f, triples => new MutableList};
+    tripIndex := 0;
     while true do (
         divisionOccurred := false;
         for elt in L do (
-            div := oiDivides(rem, elt);
-            if div === false then continue;
+            div := oiTermDiv(retTmp.rem, elt);
+            if isZero div.quo then continue;
 
-            quot := div#0;
-            moduleMap := getInducedModuleMap(freeOIModuleFromElement f, div#1);
-            rem = rem - quot.ringElement * (moduleMap elt);
+            moduleMap := getInducedModuleMap(freeOIModuleFromElement f, div.oiMap);
+            q := moduleMap elt;
+            retTmp.quo = retTmp.quo + div.quo * q;
+            retTmp.triples#tripIndex = {div.quo, div.oiMap, position(L, l -> l === elt)};
+            tripIndex = tripIndex + 1;
 
-            if isZero rem then return rem;
+            retTmp.rem = retTmp.rem - div.quo * q;
+
+            if isZero retTmp.rem then return new HashTable from {rem => retTmp.rem, quo => retTmp.quo, triples => new List from retTmp.triples};
             divisionOccurred = true;
             break
         );
@@ -26,7 +33,7 @@ oiRemainder(VectorInWidth, List) := (f, L) -> (
         if not divisionOccurred then break
     );
 
-    rem
+    retTmp
 )
 
 -- PURPOSE: Compute the S-polynomial of two VectorInWidths
@@ -55,7 +62,8 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 
 -- PURPOSE: Generate a List of OI-pairs from a List of VectorInWidths
 -- INPUT: A List 'L'
--- OUTPUT: A List of OI-pairs made from L
+-- OUTPUT: A List of Lists of the form {VectorInWidth, VectorInWidth, OIMap, OIMap, ZZ, ZZ}
+-- COMMENT: The first two VectorInWidths are the actual OI-pair. Then the OI-maps used to make them, and the indices of the elements of L used
 -- COMMENT: Slow. This is the main bottleneck.
 oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
@@ -95,7 +103,7 @@ oiPairs List := opts -> L -> (
                         moduleMapFromf := getInducedModuleMap(freeOIModuleFromElement f, oiMapFromf);
                         moduleMapFromg := getInducedModuleMap(freeOIModuleFromElement g, oiMapFromg);
 
-                        candidate := {moduleMapFromf f, moduleMapFromg g};
+                        candidate := {moduleMapFromf f, moduleMapFromg g, oiMapFromf, oiMapFromg, i, j};
                         if not member(candidate, toList ret) then ( ret#l = candidate; l = l + 1 ) -- Avoid duplicates
                     )
                 )
@@ -154,7 +162,7 @@ oiGB List := opts -> L -> (
                 print("Dividing "|net s|" by "|net toList ret)
             );
 
-            rem := oiRemainder(s, toList ret);
+            rem := (oiPolyDiv(s, toList ret)).rem;
             if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Nonzero remainder: "|net rem);
                 ret#retIndex = rem;
@@ -193,7 +201,7 @@ minimizeOIGB List := opts -> L -> (
         isRedundant := false;
 
         retMinusp := (set L) - set {p};
-        for elt in toList retMinusp do if instance(oiDivides(p, elt), List) then (if opts.Verbose then print("Found redundant element: "|net p); isRedundant = true; break);
+        for elt in toList retMinusp do if not isZero (oiTermDiv(p, elt)).quo then (if opts.Verbose then print("Found redundant element: "|net p); isRedundant = true; break);
 
         if not isRedundant then (tmp#k = p; k = k + 1)
     );
@@ -216,7 +224,7 @@ isOIGB List := L -> (
         if isZero s or member(s, toList encountered) then continue;
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        if not isZero oiRemainder(s, L) then return false -- If L were a GB, then every element would have a unique remainder of zero
+        if not isZero (oiPolyDiv(s, L)).rem then return false -- If L were a GB, then every element would have a unique remainder of zero
     );
     
     true
@@ -226,12 +234,13 @@ isOIGB List := L -> (
 -- INPUT: '(L, d)', a List 'L' of VectorInWidths and a basis Symbol 'd'
 -- OUTPUT: Assuming L is an OI-Groebner basis, outputs an OI-Groebner basis for the syzygy module of L
 -- COMMENT: Uses the OI-Schreyer's Theorem
-oiSyz = method(TypicalValue => List)
-oiSyz(List, Symbol) := (L, d) -> (
+oiSyz = method(TypicalValue => List, Options => {Verbose => false, Minimize => true})
+oiSyz(List, Symbol) := opts -> (L, d) -> (
     if #L == 0 then error "Expected a nonempty list";
-    freeOIMod := freeOIModuleFromElement L#0; -- Get the free OI-module
-    shifts := for elt in L list -degree elt; -- Calculate the degree shifts
-    widths := for elt in L list widthOfElement elt; -- Get the widths
+    freeOIMod := freeOIModuleFromElement L#0;
+
+    shifts := for elt in L list -degree elt;
+    widths := for elt in L list widthOfElement elt;
     G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => shifts);
-    G -- WORK IN PROGRESS
+    
 )

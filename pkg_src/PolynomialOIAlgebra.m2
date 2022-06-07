@@ -84,18 +84,3 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
 
     ret
 )
-
--- PURPOSE: Get the induced algebra maps between two widths
--- INPUT: '(P, m, n)', a PolynomialOIAlgebra 'P', a width 'm' and a width 'n'
--- OUTPUT: A list of the elements in P(Hom(m, n))
-getInducedAlgebraMaps = method(TypicalValue => List)
-getInducedAlgebraMaps(PolynomialOIAlgebra, ZZ, ZZ) := (P, m, n) -> (
-    if n < m then return {};
-    
-    -- Get the maps
-    ret := new MutableList;
-    oiMaps := getOIMaps(m, n);
-    for i to #oiMaps - 1 do ret#i = getInducedAlgebraMap(P, oiMaps#i);
-
-    toList ret
-)

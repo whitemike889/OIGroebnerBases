@@ -58,11 +58,7 @@ VectorInWidth = new Type of Vector
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: true if f is zero, false otherwise
 isZero = method(TypicalValue => Boolean)
-isZero VectorInWidth := f -> (
-    freeOIMod := freeOIModuleFromElement f;
-    Width := widthOfElement f;
-    f === 0_(getFreeModuleInWidth(freeOIMod, Width))
-)
+isZero VectorInWidth := f -> f == 0_(class f)
 
 load "FreeOIModuleMap.m2"
 
@@ -73,7 +69,7 @@ installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
 net VectorInWidth := f -> (
-    oiTerms := getCombinedOITermsFromVector f;
+    oiTerms := getOITermsFromVector(f, Combine => true);
     if #oiTerms == 0 then return net 0;
     if #oiTerms == 1 then return net oiTerms#0;
     

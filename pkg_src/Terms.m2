@@ -1,7 +1,6 @@
 -- Define the new type BasisIndex
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
 BasisIndex = new Type of HashTable
-BasisIndex.synonym = "basis index"
 
 -- PURPOSE: Make a new BasisIndex
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
@@ -12,7 +11,6 @@ makeBasisIndex(FreeOIModule, OIMap, ZZ) := (F, f, i) -> new BasisIndex from {fre
 -- Define the new type OITerm
 -- COMMENT: Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
 OITerm = new Type of HashTable
-OITerm.synonym = "OI-term"
 
 -- PURPOSE: Make a new OITerm
 -- INPUT: '(elt, b)', a RingElement 'elt' and a BasisIndex 'b'
@@ -22,7 +20,7 @@ makeOITerm(RingElement, BasisIndex) := (elt, b) -> new OITerm from {ringElement 
 
 net OITerm := f -> (
     local ringElementNet;
-    if #terms f.ringElement == 1 then ringElementNet = net f.ringElement
+    if #terms f.ringElement == 1 or #terms f.ringElement == 0 then ringElementNet = net f.ringElement
     else ringElementNet = "("|net f.ringElement|")";
     ringElementNet | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.Width, toString f.basisIndex.oiMap.assignment, f.basisIndex.idx)
 )
@@ -73,8 +71,9 @@ makeBasisElement BasisIndex := b -> (
 -- PURPOSE: Convert an element from vector form to a list of OITerms
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: A List of OITerms corresponding to the terms of f sorted from greatest to least
-getOITermsFromVector = method(TypicalValue => List)
-getOITermsFromVector VectorInWidth := f -> (
+-- COMMENT: "Combine => true" will combine like terms (used for printing vectors)
+getOITermsFromVector = method(TypicalValue => List, Options => {Combine => false})
+getOITermsFromVector VectorInWidth := opts -> f -> (
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
@@ -86,32 +85,13 @@ getOITermsFromVector VectorInWidth := f -> (
         if entryList#i == 0 then continue;
 
         basisElement := freeMod.basisElements#i;
-        termsInEntry := terms entryList#i;
-        for term in termsInEntry do ( termList#k = makeOITerm(term, basisElement.basisIndex); k = k + 1 )
-    );
-
-    reverse sort toList termList
-)
-
--- PURPOSE: Same as getOITermsFromVector but combines terms of the same basis element
--- INPUT: A VectorInWidth 'f'
--- OUTPUT: A List of combined OITerms corresponding to the terms of f sorted from greatest to least
--- COMMENT: This method is only used for printing elements (see net VectorInWidth)
-getCombinedOITermsFromVector = method(TypicalValue => List)
-getCombinedOITermsFromVector VectorInWidth := f -> (
-    freeOIMod := (class f).freeOIMod;
-    Width := (class f).Width;
-    freeMod := getFreeModuleInWidth(freeOIMod, Width);
-    termList := new MutableList;
-    entryList := entries f;
-
-    k := 0;
-    for i to #entryList - 1 do (
-        if entryList#i == 0 then continue;
-
-        basisElement := freeMod.basisElements#i;
-        termList#k = makeOITerm(entryList#i, basisElement.basisIndex);
-        k = k + 1
+        if opts.Combine then (
+            termList#k = makeOITerm(entryList#i, basisElement.basisIndex);
+            k = k + 1
+        ) else (
+            termsInEntry := terms entryList#i;
+            for term in termsInEntry do ( termList#k = makeOITerm(term, basisElement.basisIndex); k = k + 1 )
+        )
     );
 
     reverse sort toList termList
@@ -148,45 +128,58 @@ leadOITerm VectorInWidth := f -> (
     oiTerms#0
 )
 
--- PURPOSE: Check if an OITerm OI-divides another OITerm, or check if the lead OITerm of a VectorInWidth OI-divides another lead OITerm of a VectorInWidth
-oiDivides = method()
+-- PURPOSE: Divide one OI-term by another
+oiTermDiv = method(TypicalValue => HashTable)
 
 -- INPUT: '(f, g)', an OITerm 'f' and an OITerm 'g'
--- OUTPUT: A List of the form {quotient, OIMap} if g OI-divides f, false otherwise
-oiDivides(OITerm, OITerm) := (f, g) -> (
+-- OUTPUT: A HashTable of the form {quo => RingElement, oiMap => OIMap}
+-- COMMENT: Returns {quo => 0, oiMap => null} if division does not occur
+oiTermDiv(OITerm, OITerm) := (f, g) -> (
     freeOIModf := f.basisIndex.freeOIMod;
     freeOIModg := g.basisIndex.freeOIMod;
-    if not freeOIModf === freeOIModg then return false;
+
+    retZero := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
+    if not freeOIModf === freeOIModg then return retZero;
 
     Widthf := f.basisIndex.oiMap.Width;
     Widthg := g.basisIndex.oiMap.Width;
-    if Widthf < Widthg then return false;
+    if Widthf < Widthg then return retZero;
     if Widthf == Widthg then (
-        if not f.basisIndex === g.basisIndex then return false;
-        if f.ringElement % g.ringElement == 0 then return {makeOITerm(f.ringElement // g.ringElement, f.basisIndex), (getOIMaps(Widthg, Widthf))#0} else return false
+        if not f.basisIndex === g.basisIndex then return retZero;
+        if f.ringElement % g.ringElement == 0 then return new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0} else return retZero
     );
 
     oiMaps := getOIMaps(Widthg, Widthf);
-    for oiMap in oiMaps do (
-        moduleMap := getInducedModuleMap(freeOIModf, oiMap);
+    for oimap in oiMaps do (
+        moduleMap := getInducedModuleMap(freeOIModf, oimap);
         imageg := leadOITerm moduleMap {g};
         if not imageg.basisIndex === f.basisIndex then continue;
-        if f.ringElement % imageg.ringElement == 0 then return {makeOITerm(f.ringElement // imageg.ringElement, f.basisIndex), oiMap} else continue
+        if f.ringElement % imageg.ringElement == 0 then return new HashTable from {quo => f.ringElement // imageg.ringElement, oiMap => oimap} else continue
     );
 
-    false
+    retZero
 )
 
 -- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
--- OUTPUT: true if leadOITerm g OI-divides leadOITerm f, false otherwise
-oiDivides(VectorInWidth, VectorInWidth) := (f, g) -> oiDivides(leadOITerm f, leadOITerm g)
+-- OUTPUT: Performs oiTermDiv on lt(f) and lt(g)
+oiTermDiv(VectorInWidth, VectorInWidth) := (f, g) -> oiTermDiv(leadOITerm f, leadOITerm g)
 
--- Get the least common multiple of two OITerms
+-- PURPOSE: Get the least common multiple of two OITerms
+-- INPUT: '(f, g)', an OITerm 'f' and an OITerm 'g'
+-- OUTPUT: The LCM of f and g
 lcm(OITerm, OITerm) := (f, g) -> (
-    if not f.basisIndex === g.basisIndex then return makeOITerm(0, f.basisIndex);
+    if not f.basisIndex === g.basisIndex then return makeOITerm(0_(class f.ringElement), f.basisIndex);
 
     makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
 )
 
+-- PURPOSE: Get the least common multiple of the lead OI-term of two VectorInWidths
+-- INPUT: '(f, g)', a VectorInWidth 'f' and a VectorInWidth 'g'
+-- OUTPUT: The LCM of lt(f) and lt(g)
+lcm(VectorInWidth, VectorInWidth) := (f, g) -> lcm(leadOITerm f, leadOITerm g)
+
 -- Check if an OITerm is zero
-isZero OITerm := f -> f.ringElement == 0
+isZero OITerm := f -> f.ringElement == 0_(class f.ringElement)
+
+-- Check if a RingElement is zero
+isZero RingElement := f -> f == 0_(class f)

@@ -2,7 +2,6 @@
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, assignment => HashTable}
 -- COMMENT: assignment should specify how a BasisIndex in the source free module gets mapped to a basis index in the target free module
 InducedModuleMap = new Type of HashTable
-InducedModuleMap.synonym = "induced module map"
 
 net InducedModuleMap := f -> "Source module: "|net source f ||
     "Target module: "|net target f ||
@@ -40,17 +39,6 @@ getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
     F.maps#(f.Width, f.assignment) = ret;
 
     ret
-)
-
--- PURPOSE: Get the induced module maps between two widths
--- INPUT: '(F, m, n)', a FreeOIModule 'F', a width 'm' and a width 'n'
--- OUTPUT: A List of the elements in F(Hom(m,n))
-getInducedModuleMaps = method(TypicalValue => List)
-getInducedModuleMaps(FreeOIModule, ZZ, ZZ) := (F, m, n) -> (
-    oiMaps := getOIMaps(m, n);
-    ret := new MutableList;
-    for i to #oiMaps - 1 do ret#i = getInducedModuleMap(F, oiMaps#i);
-    toList ret
 )
 
 -- Install juxtaposition method for InducedModuleMap and List
