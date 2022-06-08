@@ -55,6 +55,10 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
 
 -- Check if a FreeOIModuleMap is a graded map
 isHomogeneous FreeOIModuleMap := f -> (
-    for elt in f.genImages do if not isHomogeneous elt then return false;
+    for elt in f.genImages do (
+        degs := for t in terms elt list degree t;
+        if not #(set degs) == 1 then return false
+    );
+
     -f.srcMod.degShifts == flatten apply(f.genImages, degree)
 )

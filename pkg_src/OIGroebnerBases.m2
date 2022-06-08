@@ -72,6 +72,16 @@ installBasisElements(F, 2);
 installBasisElements(F, 3);
 installBasisElements(F, 4);
 
+F_1; f = x_(1,1)^2*e_(1,{1},1);
+F_2; g = x_(1,2)*e_(2,{1},1); h = x_(1,1)*e_(2,{2},1);
+oiGB({f,g,h}, Verbose => true)
+oiSyz(oo, d, Verbose => true)
+
+-- Time: instant
+F_1; f = x_(1,1)^4*e_(1,{1}, 1)+x_(1,1)^2*e_(1,{1}, 1)+x_(1,1)^1*e_(1,{1},1);
+F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
+oiGB({f, h}, Verbose => true)
+
 -- Time: ~18sec with Strategy => 2, ~9sec with Strategy => 1
 F_1; f = x_(1,1)^2*e_(1, {1}, 1) + x_(1,1)^3*e_(1, {1}, 1);
 F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {1}, 1);
@@ -86,8 +96,3 @@ oiGB({f, g, h}, Verbose => true)
 F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
 F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
 oiGB(Verbose => true, {f, g})
-
--- Time: instant
-F_1; f = x_(1,1)^2*e_(1,{1}, 1)+x_(1,1)^3*e_(1,{1},1);
-F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
-oiGB({f, h}, Verbose => true)

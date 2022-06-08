@@ -2,9 +2,12 @@
 -- INPUT: '(f, L)', a VectorInWidth 'f' and a List 'L'
 -- OUTPUT: A HashTable of the form {quo => VectorInWidth, rem => VectorInWidth, triples => List} where triples is a List describing how the quotient is constructed
 -- COMMENT: If the elements of L are {l0, l1, l2} then triples may look like {{ringElt1, oiMap1, 0}, {ringElt2, oiMap2, 2}} and quo = ringElt1*F(oiMap1)(l0)+ringElt2*F(oiMap2)(l2)
-oiPolyDiv = method(TypicalValue => HashTable)
-oiPolyDiv(VectorInWidth, List) := (f, L) -> (
+-- COMMENT: "Verbose => true" will print more information
+oiPolyDiv = method(TypicalValue => HashTable, Options => {Verbose => false})
+oiPolyDiv(VectorInWidth, List) := opts -> (f, L) -> (
     if #L == 0 then error "Expected nonempty List";
+
+    if opts.Verbose then print("Dividing "|net f|" by "|net L);
 
     if isZero f then return new HashTable from {quo => f, rem => f, triples => {}};
 
@@ -64,6 +67,7 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 -- INPUT: A List 'L'
 -- OUTPUT: A List of Lists of the form {VectorInWidth, VectorInWidth, OIMap, OIMap, ZZ, ZZ}
 -- COMMENT: The first two VectorInWidths are the actual OI-pair. Then the OI-maps used to make them, and the indices of the elements of L used
+-- COMMENT: "Verbose => true" will print more information
 -- COMMENT: Slow. This is the main bottleneck.
 oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
@@ -71,12 +75,12 @@ oiPairs List := opts -> L -> (
 
     ret := new MutableList;
     l := 0;
-    for i to #L - 2 do (
-        f := L#i;
+    for fIdx to #L - 2 do (
+        f := L#fIdx;
         lotf := leadOITerm f;
         Widthf := widthOfElement f;
-        for j from i + 1 to #L - 1 do (
-            g := L#j;
+        for gIdx from fIdx + 1 to #L - 1 do (
+            g := L#gIdx;
             Widthg := widthOfElement g;
             lotg := leadOITerm g;
             if not lotf.basisIndex.idx == lotg.basisIndex.idx then continue; -- These will have lcm zero
@@ -103,8 +107,8 @@ oiPairs List := opts -> L -> (
                         moduleMapFromf := getInducedModuleMap(freeOIModuleFromElement f, oiMapFromf);
                         moduleMapFromg := getInducedModuleMap(freeOIModuleFromElement g, oiMapFromg);
 
-                        candidate := {moduleMapFromf f, moduleMapFromg g, oiMapFromf, oiMapFromg, i, j};
-                        if not member(candidate, toList ret) then ( ret#l = candidate; l = l + 1 ) -- Avoid duplicates
+                        candidate := {moduleMapFromf f, moduleMapFromg g, oiMapFromf, oiMapFromg, fIdx, gIdx};
+                        if not member(candidate, toList ret) then (ret#l = candidate; l = l + 1) -- Avoid duplicates
                     )
                 )
             )
@@ -121,7 +125,7 @@ oiGBCache = new MutableHashTable
 -- INPUT: A List 'L' of VectorInWidths
 -- OUTPUT: A Groebner basis made from L
 -- COMMENT: Uses the OI-Buchberger's Algorithm
--- COMMENT: "Verbose => true" will print more info
+-- COMMENT: "Verbose => true" will print more information
 -- COMMENT: "Strategy => 1" recalculates the OI-pairs every time a nonzero remainder is found
 -- COMMENT: "Strategy => 2" adds all nonzero remainders before recalculating the OI-pairs
 -- COMMENT: "Minimize => false" will not minimize the basis at the end
@@ -156,13 +160,12 @@ oiGB List := opts -> L -> (
             encIndex = encIndex + 1;
 
             if opts.Verbose then (
-                print("On pair "|toString (i + 1)|" out of "|toString (#oipairs));
+                print("On pair "|toString(i + 1)|" out of "|toString(#oipairs));
                 if opts.Strategy == 2 then print("Elements added so far this phase: "|toString addedThisPhase);
-                print("Elements added total: "|toString addedTotal);
-                print("Dividing "|net s|" by "|net toList ret)
+                print("Elements added total: "|toString addedTotal)
             );
 
-            rem := (oiPolyDiv(s, toList ret)).rem;
+            rem := (oiPolyDiv(s, toList ret, Verbose => opts.Verbose)).rem;
             if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Nonzero remainder: "|net rem);
                 ret#retIndex = rem;
@@ -219,28 +222,87 @@ isOIGB List := L -> (
 
     encountered := new MutableList;
     encIndex := 0;
-    for pair in oiPairs L do (
+    for pair in oiPairs(L, Verbose => true) do (
+        print("Pair: "|net pair);
         s := spoly(pair#0, pair#1);
+        print("Spoly: "|net s);
         if isZero s or member(s, toList encountered) then continue;
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        if not isZero (oiPolyDiv(s, L)).rem then return false -- If L were a GB, then every element would have a unique remainder of zero
+        stuff := (oiPolyDiv(s, L, Verbose => true)).rem;
+        if not isZero stuff then (print stuff; return false) -- If L were a GB, then every element would have a unique remainder of zero
     );
     
     true
 )
 
+-- Cache for storing Groebner bases computed with oiSyz
+oiSyzCache = new MutableHashTable
+
 -- PURPOSE: Compute an OI-Groebner basis for the syzygy module of a List of VectorInWidths
 -- INPUT: '(L, d)', a List 'L' of VectorInWidths and a basis Symbol 'd'
 -- OUTPUT: Assuming L is an OI-Groebner basis, outputs an OI-Groebner basis for the syzygy module of L
 -- COMMENT: Uses the OI-Schreyer's Theorem
-oiSyz = method(TypicalValue => List, Options => {Verbose => false, Minimize => true})
+oiSyz = method(TypicalValue => List, Options => {Verbose => false, Minimize => false})
 oiSyz(List, Symbol) := opts -> (L, d) -> (
     if #L == 0 then error "Expected a nonempty list";
+    
+    -- Return the GB if it already exists
+    if oiSyzCache#?(L, d, opts.Minimize) then return oiSyzCache#(L, d, opts.Minimize);
+    
     freeOIMod := freeOIModuleFromElement L#0;
-
     shifts := for elt in L list -degree elt;
     widths := for elt in L list widthOfElement elt;
-    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => shifts);
-    
+    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => flatten shifts);
+    S := makeFreeOIModuleMap(freeOIMod, G, L);
+    installSchreyerMonomialOrder S;
+
+    ret := new MutableList;
+    retIndex := 0;
+    oipairs := oiPairs(L, Verbose => opts.Verbose);
+    if opts.Verbose then print "Iterating through pairs...";
+    i := 0;
+    for pair in oipairs do (
+        lotf := leadOITerm pair#0;
+        lotg := leadOITerm pair#1;
+        lcmfg := lcm(lotf, lotg);
+        if isZero lcmfg then continue; -- This will yield a trivial syzygy
+
+        if opts.Verbose then print("On pair "|toString(i + 1)|" out of "|toString(#oipairs));
+        if opts.Verbose then print("Pair: "|net pair);
+
+        s := spoly(pair#0, pair#1);
+        sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
+        print("Quotient: "|net sdiv.quo);
+        print("Triples: "|net sdiv.triples);
+        swidth := widthOfElement s;
+        freeMod := getFreeModuleInWidth(G, swidth);
+        thingToSubtract := 0_freeMod;
+
+        -- Calculate the stuff to subtract off
+        for triple in sdiv.triples do (
+            b := makeBasisElement makeBasisIndex(G, triple#1, 1 + triple#2);
+            thingToSubtract = thingToSubtract + triple#0 * getVectorFromOITerms {b}
+        );
+
+        bSigma := makeBasisElement makeBasisIndex(G, pair#2, 1 + pair#4);
+        bTau := makeBasisElement makeBasisIndex(G, pair#3, 1 + pair#5);
+
+        -- Make the syzygy
+        ret#retIndex = (lcmfg.ringElement // lotf.ringElement) * getVectorFromOITerms {bSigma} - (lcmfg.ringElement // lotg.ringElement) * getVectorFromOITerms {bTau} - thingToSubtract;
+        
+        if opts.Verbose then print("Generated syzygy "|net ret#retIndex);
+        
+        retIndex = retIndex + 1;
+        i = i + 1
+    );
+
+    -- Minimize the basis
+    local finalRet;
+    if opts.Minimize then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret; 
+
+    -- Store the GB
+    oiSyzCache#(L, d, opts.Minimize) = finalRet;
+
+    finalRet
 )

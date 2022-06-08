@@ -5,6 +5,7 @@ BasisIndex = new Type of HashTable
 -- PURPOSE: Make a new BasisIndex
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 -- OUTPUT: A BasisIndex made from F, f and i
+-- COMMENT: i should start at 1
 makeBasisIndex = method(TypicalValue => BasisIndex)
 makeBasisIndex(FreeOIModule, OIMap, ZZ) := (F, f, i) -> new BasisIndex from {freeOIMod => F, oiMap => f, idx => i}
 
@@ -183,3 +184,9 @@ isZero OITerm := f -> f.ringElement == 0_(class f.ringElement)
 
 -- Check if a RingElement is zero
 isZero RingElement := f -> f == 0_(class f)
+
+-- Get the terms in a VectorInWidth
+terms VectorInWidth := f -> (
+    oiTerms := getOITermsFromVector f;
+    for oiTerm in oiTerms list getVectorFromOITerms {oiTerm}
+)
