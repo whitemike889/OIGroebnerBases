@@ -774,18 +774,17 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 -- OUTPUT: A List of Lists of the form {VectorInWidth, VectorInWidth, OIMap, OIMap, ZZ, ZZ}
 -- COMMENT: The first two VectorInWidths are the actual OI-pair. Then the OI-maps used to make them, and the indices of the elements of L used
 -- COMMENT: "Verbose => true" will print more information
--- COMMENT: Slow. This is the main bottleneck.
 oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
     if #L < 2  then error "Expected a List with at least 2 elements";
 
     ret := new MutableList;
     l := 0;
-    for fIdx to #L - 2 do (
+    for fIdx to #L - 1 do (
         f := L#fIdx;
         lotf := leadOITerm f;
         Widthf := widthOfElement f;
-        for gIdx from fIdx + 1 to #L - 1 do (
+        for gIdx from fIdx to #L - 1 do (
             g := L#gIdx;
             Widthg := widthOfElement g;
             lotg := leadOITerm g;
@@ -901,41 +900,58 @@ oiGB List := opts -> L -> (
 -- INPUT: A List 'L'
 -- OUTPUT: Assuming L is an OI-Groebner basis, returns a minimized basis made from L
 -- COMMENT: "Minimal" in the sense of lt(p) not in <lt(L - {p})> for all p in L
+-- COMMENT: "Verbose => true" will print more information
 minimizeOIGB = method(TypicalValue => List, Options => {Verbose => false})
 minimizeOIGB List := opts -> L -> (
     if opts.Verbose then print "Minimizing...";
-    tmp := new MutableList;
-    k := 0;
-    for p in L do (
-        isRedundant := false;
 
-        retMinusp := (set L) - set {p};
-        for elt in toList retMinusp do if not isZero (oiTermDiv(p, elt)).quo then (if opts.Verbose then print("Found redundant element: "|net p); isRedundant = true; break);
+    currentBasis := L;
+    while true do (
+        redundantFound := false;
 
-        if not isRedundant then (tmp#k = p; k = k + 1)
+        for p in currentBasis do (
+            minusp := toList((set currentBasis) - set {p});
+            for elt in minusp do if not isZero (oiTermDiv(p, elt)).quo then (
+                if opts.Verbose then print("Found redundant element: "|net p);
+                redundantFound = true;
+                currentBasis = minusp;
+                break
+            );
+
+            if redundantFound then break
+        );
+
+        if not redundantFound then break
     );
 
-    toList tmp
+    currentBasis
 )
 
 -- PURPOSE: Check if a List is an OI-Groebner basis
 -- INPUT: A List 'L' of VectorInWidths
 -- OUTPUT: true if L is an OI-Groebner basis, false otherwise
-isOIGB = method(TypicalValue => Boolean)
-isOIGB List := L -> (
+-- COMMENT: "Verbose => true" will print more information
+isOIGB = method(TypicalValue => Boolean, Options => {Verbose => false})
+isOIGB List := opts -> L -> (
     if #L == 0 then return false;
     if #L == 1 then if isZero L#0 then return false else return true;
 
     encountered := new MutableList;
     encIndex := 0;
-    for pair in oiPairs L do (
-        s := spoly(pair#0, pair#1);
+    oipairs := oiPairs(L, Verbose => opts.Verbose);
+    for i to #oipairs - 1 do (
+        if opts.Verbose then (
+            print("On pair "|toString(i + 1)|" out of "|toString(#oipairs));
+            print("Pair: "|net oipairs#i)
+        );
+
+        s := spoly(oipairs#i#0, oipairs#i#1);
         if isZero s or member(s, toList encountered) then continue;
 
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-
-        if not isZero (oiPolyDiv(s, L)).rem then return false -- If L were a GB, then every element would have a unique remainder of zero
+        rem := (oiPolyDiv(s, L, Verbose => opts.Verbose)).rem;
+        if not isZero rem then (if opts.Verbose then print("Nonzero remainder: "|net rem); return false) -- If L were a GB, then every element would have a unique remainder of zero
     );
     
     true
@@ -948,7 +964,7 @@ oiSyzCache = new MutableHashTable
 -- INPUT: '(L, d)', a List 'L' of VectorInWidths and a basis Symbol 'd'
 -- OUTPUT: Assuming L is an OI-Groebner basis, outputs an OI-Groebner basis for the syzygy module of L
 -- COMMENT: Uses the OI-Schreyer's Theorem
-oiSyz = method(TypicalValue => List, Options => {Verbose => false, Minimize => false})
+oiSyz = method(TypicalValue => List, Options => {Verbose => false, Minimize => true})
 oiSyz(List, Symbol) := opts -> (L, d) -> (
     if #L == 0 then error "Expected a nonempty list";
     
@@ -973,13 +989,11 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
         lcmfg := lcm(lotf, lotg);
         if isZero lcmfg then continue; -- This will yield a trivial syzygy
 
-        if opts.Verbose then print("On pair "|toString(i + 1)|" out of "|toString(#oipairs));
+        if opts.Verbose then (print("On pair "|toString(i + 1)|" out of "|toString(#oipairs)); i = i + 1);
         if opts.Verbose then print("Pair: "|net pair);
 
         s := spoly(pair#0, pair#1);
         sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
-        print("Quotient: "|net sdiv.quo);
-        print("Triples: "|net sdiv.triples);
         swidth := widthOfElement s;
         freeMod := getFreeModuleInWidth(G, swidth);
         thingToSubtract := 0_freeMod;
@@ -994,12 +1008,13 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
         bTau := makeBasisElement makeBasisIndex(G, pair#3, 1 + pair#5);
 
         -- Make the syzygy
-        ret#retIndex = (lcmfg.ringElement // lotf.ringElement) * getVectorFromOITerms {bSigma} - (lcmfg.ringElement // lotg.ringElement) * getVectorFromOITerms {bTau} - thingToSubtract;
+        syzygy := (lcmfg.ringElement // lotf.ringElement) * getVectorFromOITerms {bSigma} - (lcmfg.ringElement // lotg.ringElement) * getVectorFromOITerms {bTau} - thingToSubtract;
         
+        if isZero syzygy then continue; -- Skip trivial syzygies
+
+        ret#retIndex = syzygy;
         if opts.Verbose then print("Generated syzygy "|net ret#retIndex);
-        
-        retIndex = retIndex + 1;
-        i = i + 1
+        retIndex = retIndex + 1
     );
 
     -- Minimize the basis
@@ -1052,29 +1067,24 @@ installBasisElements(F, 2);
 installBasisElements(F, 3);
 installBasisElements(F, 4);
 
--- Time: instant
-F_1; f = x_(1,1)^2*e_(1,{1},1);
-F_2; g = x_(1,2)*e_(2,{1},1); h = x_(1,1)*e_(2,{2},1);
-B = oiGB({f,g,h}, Verbose => true);
-oiSyz(B, d, Verbose => true)
-isOIGB B
+-- Syzygy examle 1
+F_1; b1 = x_(1,1)^3*e_(1,{1},1);
+F_2; b2 = x_(1,1)^2*e_(2,{1},1); b3 = x_(1,2)^2*e_(2,{2},1); b4 = x_(1,1)*x_(1,2)*e_(2,{2},1)
+B = oiGB({b1, b2, b3, b4}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C
 
--- Time: instant
-F_1; f = x_(1,1)^2*e_(1,{1}, 1);
+-- Syzygy example 2
+F_1; f = x_(1,1)^3*e_(1,{1}, 1);
 F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
-oiGB({f, h}, Verbose => true)
+B = oiGB({f, h}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C
 
--- Time: ~18sec with Strategy => 2, ~9sec with Strategy => 1
-F_1; f = x_(1,1)^2*e_(1, {1}, 1) + x_(1,1)^3*e_(1, {1}, 1);
-F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {1}, 1);
-F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {2}, 1);
-oiGB({f, g, h}, Verbose => true)
-
--- Time: ~43sec with Strategy => 2, ~168sec with Strategy => 1
-F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1);
-oiGB({f, g, h}, Verbose => true)
-
--- Time: ~1hr
-F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
-F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
-oiGB(Verbose => true, {f, g})
+-- Syzygy example 3
+F_1; f = x_(1,1)^3*e_(1,{1}, 1);
+F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
+F_3; g = x_(1,3)*e_(3, {2}, 1);
+B = oiGB({f, g, h}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C

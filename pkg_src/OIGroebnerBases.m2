@@ -72,29 +72,24 @@ installBasisElements(F, 2);
 installBasisElements(F, 3);
 installBasisElements(F, 4);
 
--- Time: instant
-F_1; f = x_(1,1)^2*e_(1,{1},1);
-F_2; g = x_(1,2)*e_(2,{1},1); h = x_(1,1)*e_(2,{2},1);
-B = oiGB({f,g,h}, Verbose => true);
-oiSyz(B, d, Verbose => true)
-isOIGB B
+-- Syzygy examle 1
+F_1; b1 = x_(1,1)^3*e_(1,{1},1);
+F_2; b2 = x_(1,1)^2*e_(2,{1},1); b3 = x_(1,2)^2*e_(2,{2},1); b4 = x_(1,1)*x_(1,2)*e_(2,{2},1)
+B = oiGB({b1, b2, b3, b4}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C
 
--- Time: instant
-F_1; f = x_(1,1)^2*e_(1,{1}, 1);
+-- Syzygy example 2
+F_1; f = x_(1,1)^3*e_(1,{1}, 1);
 F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
-oiGB({f, h}, Verbose => true)
+B = oiGB({f, h}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C
 
--- Time: ~18sec with Strategy => 2, ~9sec with Strategy => 1
-F_1; f = x_(1,1)^2*e_(1, {1}, 1) + x_(1,1)^3*e_(1, {1}, 1);
-F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {1}, 1);
-F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {2}, 1);
-oiGB({f, g, h}, Verbose => true)
-
--- Time: ~43sec with Strategy => 2, ~168sec with Strategy => 1
-F_2; g = x_(1,2)^2*e_(2, {2}, 1) + x_(1,2)*x_(1,1)*e_(2, {2}, 1);
-oiGB({f, g, h}, Verbose => true)
-
--- Time: ~1hr
-F_2; f = x_(1,2)*e_(2, {1}, 1) + x_(1,1)*e_(2, {2}, 1);
-F_3; g = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
-oiGB(Verbose => true, {f, g})
+-- Syzygy example 3
+F_1; f = x_(1,1)^3*e_(1,{1}, 1);
+F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
+F_3; g = x_(1,3)*e_(3, {2}, 1);
+B = oiGB({f, g, h}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C
