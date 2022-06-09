@@ -74,7 +74,7 @@ installBasisElements(F, 4);
 
 -- Syzygy examle 1
 F_1; b1 = x_(1,1)^3*e_(1,{1},1);
-F_2; b2 = x_(1,1)^2*e_(2,{1},1); b3 = x_(1,2)^2*e_(2,{2},1); b4 = x_(1,1)*x_(1,2)*e_(2,{2},1)
+F_2; b2 = x_(1,1)^2*e_(2,{1},1); b3 = x_(1,2)^2*e_(2,{2},1); b4 = x_(1,1)*x_(1,2)*e_(2,{2},1);
 B = oiGB({b1, b2, b3, b4}, Verbose => true)
 C = oiSyz(B, d, Verbose => true)
 isOIGB C

@@ -90,6 +90,18 @@ net VectorInWidth := f -> (
 -- COMMENT: Compares vectors by looking at their lead terms
 VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
 
+-- PURPOSE: Make a VectorInWidth monic
+-- INPUT: A VectorInWidth 'f'
+-- OUTPUT: f // leadCoefficient f
+makeMonic = method(TypicalValue => VectorInWidth)
+makeMonic VectorInWidth := f -> (
+    oiterms := getOITermsFromVector f;
+    lotf := leadOITerm f;
+    lcf := leadCoefficient lotf.ringElement;
+    newTerms := for oiterm in oiterms list makeOITerm(oiterm.ringElement // lcf, oiterm.basisIndex);
+    getVectorFromOITerms newTerms
+)
+
 load "Terms.m2"
 
 -- PURPOSE: Get the free module from a FreeOIModule in a specified width
