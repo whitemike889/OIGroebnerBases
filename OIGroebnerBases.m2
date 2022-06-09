@@ -398,7 +398,12 @@ OITerm ? OITerm := (f, g) -> (
         freeOIModuleMap := monOrder;
         imagef := freeOIModuleMap {f};
         imageg := freeOIModuleMap {g};
-        if not leadOITerm imagef === leadOITerm imageg then return leadOITerm imagef ? leadOITerm imageg;
+        lotimf := leadOITerm imagef;
+        lotimg := leadOITerm imageg;
+        lomf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);
+        lomg := makeOITerm(lotimg.ringElement // leadCoefficient lotimg.ringElement, lotimg.basisIndex);
+
+        if not lomf === lomg then return lomf ? lomg;
         if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
         if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
@@ -923,15 +928,14 @@ isOIGB List := L -> (
 
     encountered := new MutableList;
     encIndex := 0;
-    for pair in oiPairs(L, Verbose => true) do (
-        print("Pair: "|net pair);
+    for pair in oiPairs L do (
         s := spoly(pair#0, pair#1);
-        print("Spoly: "|net s);
         if isZero s or member(s, toList encountered) then continue;
+
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        stuff := (oiPolyDiv(s, L, Verbose => true)).rem;
-        if not isZero stuff then (print stuff; return false) -- If L were a GB, then every element would have a unique remainder of zero
+
+        if not isZero (oiPolyDiv(s, L)).rem then return false -- If L were a GB, then every element would have a unique remainder of zero
     );
     
     true
@@ -1048,14 +1052,16 @@ installBasisElements(F, 2);
 installBasisElements(F, 3);
 installBasisElements(F, 4);
 
+-- Time: instant
 F_1; f = x_(1,1)^2*e_(1,{1},1);
 F_2; g = x_(1,2)*e_(2,{1},1); h = x_(1,1)*e_(2,{2},1);
-oiGB({f,g,h}, Verbose => true)
-oiSyz(oo, d, Verbose => true)
+B = oiGB({f,g,h}, Verbose => true);
+oiSyz(B, d, Verbose => true)
+isOIGB B
 
 -- Time: instant
-F_1; f = x_(1,1)^4*e_(1,{1}, 1)+x_(1,1)^2*e_(1,{1}, 1)+x_(1,1)^1*e_(1,{1},1);
-F_3; h = x_(1,3)*e_(3, {3}, 1) + x_(1,1)*e_(3, {1}, 1);
+F_1; f = x_(1,1)^2*e_(1,{1}, 1);
+F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
 oiGB({f, h}, Verbose => true)
 
 -- Time: ~18sec with Strategy => 2, ~9sec with Strategy => 1

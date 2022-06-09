@@ -222,15 +222,14 @@ isOIGB List := L -> (
 
     encountered := new MutableList;
     encIndex := 0;
-    for pair in oiPairs(L, Verbose => true) do (
-        print("Pair: "|net pair);
+    for pair in oiPairs L do (
         s := spoly(pair#0, pair#1);
-        print("Spoly: "|net s);
         if isZero s or member(s, toList encountered) then continue;
+
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        stuff := (oiPolyDiv(s, L, Verbose => true)).rem;
-        if not isZero stuff then (print stuff; return false) -- If L were a GB, then every element would have a unique remainder of zero
+
+        if not isZero (oiPolyDiv(s, L)).rem then return false -- If L were a GB, then every element would have a unique remainder of zero
     );
     
     true

@@ -51,7 +51,12 @@ OITerm ? OITerm := (f, g) -> (
         freeOIModuleMap := monOrder;
         imagef := freeOIModuleMap {f};
         imageg := freeOIModuleMap {g};
-        if not leadOITerm imagef === leadOITerm imageg then return leadOITerm imagef ? leadOITerm imageg;
+        lotimf := leadOITerm imagef;
+        lotimg := leadOITerm imageg;
+        lomf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);
+        lomg := makeOITerm(lotimg.ringElement // leadCoefficient lotimg.ringElement, lotimg.basisIndex);
+
+        if not lomf === lomg then return lomf ? lomg;
         if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
         if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
