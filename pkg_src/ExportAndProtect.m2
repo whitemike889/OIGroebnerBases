@@ -13,7 +13,7 @@ export {
     "makePolynomialOIAlgebra", "getAlgebraInWidth",
     "makeFreeOIModuleMap",
     "leadOITerm", "oiTermDiv",
-    "makeFreeOIModule", "installSchreyerMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
+    "makeFreeOIModule", "installSchreyerMonomialOrder", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
     "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz"
 }
 

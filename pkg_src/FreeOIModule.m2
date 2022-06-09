@@ -40,6 +40,13 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
         maps => new MutableHashTable}
 )
 
+-- PURPOSE: Get the monomial order from a FreeOIModule
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: The monomial order on F
+-- COMMENT: Returns either Lex or a FreeOIModuleMap
+getMonomialOrder = method()
+getMonomialOrder FreeOIModule := F -> F.monOrder#0
+
 -- Define the new type ModuleInWidth
 -- COMMENT: Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
 -- COMMENT: The order of basisElements matters, i.e. given a module M, basisElements#i should correspond to M_i
