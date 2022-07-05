@@ -70,7 +70,7 @@ spoly(VectorInWidth, VectorInWidth) := (f, g) -> (
 -- COMMENT: "Verbose => true" will print more information
 oiPairs = method(TypicalValue => List, Options => {Verbose => false})
 oiPairs List := opts -> L -> (
-    if #L < 2  then error "Expected a List with at least 2 elements";
+    if #L == 0 then error "Expected a nonempty List";
 
     ret := new MutableList;
     l := 0;
@@ -127,14 +127,14 @@ oiGBCache = new MutableHashTable
 -- COMMENT: "Verbose => true" will print more information
 -- COMMENT: "Strategy => 1" recalculates the OI-pairs every time a nonzero remainder is found
 -- COMMENT: "Strategy => 2" adds all nonzero remainders before recalculating the OI-pairs
--- COMMENT: "Minimize => false" will not minimize the basis at the end
-oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1, Minimize => true})
+-- COMMENT: "MinimalOIGB => false" will not minimize the basis at the end
+oiGB = method(TypicalValue => List, Options => {Verbose => false, Strategy => 1, MinimalOIGB => true})
 oiGB List := opts -> L -> (
 
     if not (opts.Strategy == 1 or opts.Strategy == 2) then error "Expected Strategy => 1 or Strategy => 2";
 
     -- Return the GB if it already exists
-    if oiGBCache#?(L, opts.Strategy, opts.Minimize) then return oiGBCache#(L, opts.Strategy, opts.Minimize);
+    if oiGBCache#?(L, opts.Strategy, opts.MinimalOIGB) then return oiGBCache#(L, opts.Strategy, opts.MinimalOIGB);
 
     if #L == 0 then error "Expected a nonempty List";
     if #L == 1 then if isZero L#0 then return false else return L;
@@ -182,10 +182,10 @@ oiGB List := opts -> L -> (
 
     -- Minimize the basis
     local finalRet;
-    if opts.Minimize then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret;
+    if opts.MinimalOIGB then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret;
 
     -- Store the basis
-    oiGBCache#(L, opts.Strategy, opts.Minimize) = finalRet;
+    oiGBCache#(L, opts.Strategy, opts.MinimalOIGB) = finalRet;
 
     finalRet
 )
@@ -258,12 +258,12 @@ oiSyzCache = new MutableHashTable
 -- INPUT: '(L, d)', a List 'L' of VectorInWidths and a basis Symbol 'd'
 -- OUTPUT: Assuming L is an OI-Groebner basis, outputs an OI-Groebner basis for the syzygy module of L
 -- COMMENT: Uses the OI-Schreyer's Theorem
-oiSyz = method(TypicalValue => List, Options => {Verbose => false, Minimize => true})
+oiSyz = method(TypicalValue => List, Options => {Verbose => false, MinimalOIGB => true})
 oiSyz(List, Symbol) := opts -> (L, d) -> (
     if #L == 0 then error "Expected a nonempty list";
     
     -- Return the GB if it already exists
-    if oiSyzCache#?(L, d, opts.Minimize) then return oiSyzCache#(L, d, opts.Minimize);
+    if oiSyzCache#?(L, d, opts.MinimalOIGB) then return oiSyzCache#(L, d, opts.MinimalOIGB);
     
     freeOIMod := freeOIModuleFromElement L#0;
     shifts := for elt in L list -degree elt;
@@ -313,10 +313,10 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
 
     -- Minimize the basis
     local finalRet;
-    if opts.Minimize then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret; 
+    if opts.MinimalOIGB then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret; 
 
     -- Store the GB
-    oiSyzCache#(L, d, opts.Minimize) = finalRet;
+    oiSyzCache#(L, d, opts.MinimalOIGB) = finalRet;
 
     finalRet
 )

@@ -6,7 +6,7 @@ export {
     "FreeOIModule",
 
     -- Options
-    "DegreeShifts", "Combine",
+    "DegreeShifts", "Combine", "MinimalOIGB",
 
     -- Methods
     "makeOIMap", "getOIMaps", "composeOIMaps",
