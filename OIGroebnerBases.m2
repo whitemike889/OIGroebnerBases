@@ -404,7 +404,7 @@ OITerm ? OITerm := (f, g) -> (
     if not bf.freeOIMod === bg.freeOIMod then return incomparable;
     freeOIMod := bf.freeOIMod;
 
-    monOrder := freeOIMod.monOrder#0;
+    monOrder := getMonomialOrder freeOIMod;
     if monOrder === Lex then ( -- LEX ORDER
         if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
@@ -419,10 +419,10 @@ OITerm ? OITerm := (f, g) -> (
         imageg := freeOIModuleMap {g};
         lotimf := leadOITerm imagef;
         lotimg := leadOITerm imageg;
-        lomf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);
-        lomg := makeOITerm(lotimg.ringElement // leadCoefficient lotimg.ringElement, lotimg.basisIndex);
+        lomimf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);
+        lomimg := makeOITerm(lotimg.ringElement // leadCoefficient lotimg.ringElement, lotimg.basisIndex);
 
-        if not lomf === lomg then return lomf ? lomg;
+        if not lomimf === lomimg then return lomimf ? lomimg;
         if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
         if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;
@@ -607,9 +607,6 @@ FreeOIModule _ ZZ := (F, n) -> (
 -- PURPOSE: Install a basis element for user input
 -- OUTPUT: Sets the desired IndexedVariable to the appropriate basis vector
 installBasisElement = method()
-
--- INPUT: '(F, n, f, i)', a FreeOIModule 'F', an integer 'n', a List 'f' and an index 'i'
-installBasisElement(FreeOIModule, ZZ, List, ZZ) := (F, n, f, i) -> installBasisElement(F, makeOIMap(n, f), i)
 
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 installBasisElement(FreeOIModule, OIMap, ZZ) := (F, f, i) -> (
@@ -922,7 +919,7 @@ oiGB List := opts -> L -> (
 -- COMMENT: "Verbose => true" will print more information
 minimizeOIGB = method(TypicalValue => List, Options => {Verbose => false})
 minimizeOIGB List := opts -> L -> (
-    if opts.Verbose then print "Minimizing...";
+    if opts.Verbose then print "Computing minimal OIGB...";
 
     currentBasis := L;
     while true do (
@@ -1012,15 +1009,17 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
         if opts.Verbose then print("Pair: "|net pair);
 
         s := spoly(pair#0, pair#1);
-        sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
         swidth := widthOfElement s;
         freeMod := getFreeModuleInWidth(G, swidth);
         thingToSubtract := 0_freeMod;
+        if not isZero s then (
+            sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
 
-        -- Calculate the stuff to subtract off
-        for triple in sdiv.triples do (
-            b := makeBasisElement makeBasisIndex(G, triple#1, 1 + triple#2);
-            thingToSubtract = thingToSubtract + triple#0 * getVectorFromOITerms {b}
+            -- Calculate the stuff to subtract off
+            for triple in sdiv.triples do (
+                b := makeBasisElement makeBasisIndex(G, triple#1, 1 + triple#2);
+                thingToSubtract = thingToSubtract + triple#0 * getVectorFromOITerms {b}
+            )
         );
 
         bSigma := makeBasisElement makeBasisIndex(G, pair#2, 1 + pair#4);

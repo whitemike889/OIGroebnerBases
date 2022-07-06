@@ -38,7 +38,7 @@ OITerm ? OITerm := (f, g) -> (
     if not bf.freeOIMod === bg.freeOIMod then return incomparable;
     freeOIMod := bf.freeOIMod;
 
-    monOrder := freeOIMod.monOrder#0;
+    monOrder := getMonomialOrder freeOIMod;
     if monOrder === Lex then ( -- LEX ORDER
         if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
@@ -53,10 +53,10 @@ OITerm ? OITerm := (f, g) -> (
         imageg := freeOIModuleMap {g};
         lotimf := leadOITerm imagef;
         lotimg := leadOITerm imageg;
-        lomf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);
-        lomg := makeOITerm(lotimg.ringElement // leadCoefficient lotimg.ringElement, lotimg.basisIndex);
+        lomimf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);
+        lomimg := makeOITerm(lotimg.ringElement // leadCoefficient lotimg.ringElement, lotimg.basisIndex);
 
-        if not lomf === lomg then return lomf ? lomg;
+        if not lomimf === lomimg then return lomimf ? lomimg;
         if not idxf == idxg then if idxf < idxg then return symbol > else return symbol <;
         if not oiMapf.Width == oiMapg.Width then return oiMapf.Width ? oiMapg.Width;
         if not oiMapf.assignment == oiMapg.assignment then return oiMapf.assignment ? oiMapg.assignment;

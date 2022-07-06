@@ -150,9 +150,6 @@ FreeOIModule _ ZZ := (F, n) -> (
 -- OUTPUT: Sets the desired IndexedVariable to the appropriate basis vector
 installBasisElement = method()
 
--- INPUT: '(F, n, f, i)', a FreeOIModule 'F', an integer 'n', a List 'f' and an index 'i'
-installBasisElement(FreeOIModule, ZZ, List, ZZ) := (F, n, f, i) -> installBasisElement(F, makeOIMap(n, f), i)
-
 -- INPUT: '(F, f, i)', a FreeOIModule 'F', an OIMap 'f' and an index 'i'
 installBasisElement(FreeOIModule, OIMap, ZZ) := (F, f, i) -> (
     basisElement := makeBasisElement makeBasisIndex(F, f, i);

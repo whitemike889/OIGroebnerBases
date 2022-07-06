@@ -197,7 +197,7 @@ oiGB List := opts -> L -> (
 -- COMMENT: "Verbose => true" will print more information
 minimizeOIGB = method(TypicalValue => List, Options => {Verbose => false})
 minimizeOIGB List := opts -> L -> (
-    if opts.Verbose then print "Minimizing...";
+    if opts.Verbose then print "Computing minimal OIGB...";
 
     currentBasis := L;
     while true do (
@@ -287,15 +287,17 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
         if opts.Verbose then print("Pair: "|net pair);
 
         s := spoly(pair#0, pair#1);
-        sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
         swidth := widthOfElement s;
         freeMod := getFreeModuleInWidth(G, swidth);
         thingToSubtract := 0_freeMod;
+        if not isZero s then (
+            sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
 
-        -- Calculate the stuff to subtract off
-        for triple in sdiv.triples do (
-            b := makeBasisElement makeBasisIndex(G, triple#1, 1 + triple#2);
-            thingToSubtract = thingToSubtract + triple#0 * getVectorFromOITerms {b}
+            -- Calculate the stuff to subtract off
+            for triple in sdiv.triples do (
+                b := makeBasisElement makeBasisIndex(G, triple#1, 1 + triple#2);
+                thingToSubtract = thingToSubtract + triple#0 * getVectorFromOITerms {b}
+            )
         );
 
         bSigma := makeBasisElement makeBasisIndex(G, pair#2, 1 + pair#4);
