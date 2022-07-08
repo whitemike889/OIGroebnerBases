@@ -4,6 +4,7 @@ export {
     "PolynomialOIAlgebra",
     "FreeOIModuleMap",
     "FreeOIModule",
+    "OIResolution",
 
     -- Options
     "DegreeShifts", "Combine", "MinimalOIGB",
@@ -14,7 +15,8 @@ export {
     "makeFreeOIModuleMap",
     "leadOITerm", "oiTermDiv",
     "makeFreeOIModule", "installSchreyerMonomialOrder", "makeMonic", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
-    "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz"
+    "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz",
+    "oiRes"
 }
 
 scan({
