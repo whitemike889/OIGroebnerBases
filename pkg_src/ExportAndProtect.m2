@@ -16,7 +16,7 @@ export {
     "leadOITerm", "oiTermDiv",
     "makeFreeOIModule", "installSchreyerMonomialOrder", "makeMonic", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
     "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz",
-    "oiRes"
+    "oiRes", "isComplex"
 }
 
 scan({

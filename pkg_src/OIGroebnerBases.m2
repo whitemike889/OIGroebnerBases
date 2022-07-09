@@ -75,6 +75,11 @@ installBasisElements(F, 3);
 installBasisElements(F, 4);
 
 -- Res example 1
+F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+F_2; b3 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1, b2, b3}, 1, Verbose => true)
+
+-- Res example 2
 F_1; b1 = x_(1,1)*e_(1,{1},1);
 F_2; b2 = x_(1,2)*e_(2,{1},1);
 C = oiRes({b1,b2}, 0, Verbose => true)

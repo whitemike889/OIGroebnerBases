@@ -77,7 +77,7 @@ makeBasisElement BasisIndex := b -> (
 -- PURPOSE: Convert an element from vector form to a list of OITerms
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: A List of OITerms corresponding to the terms of f sorted from greatest to least
--- COMMENT: "Combine => true" will combine like terms (used for printing vectors)
+-- COMMENT: "Combine => true" will combine like terms
 getOITermsFromVector = method(TypicalValue => List, Options => {Combine => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
     freeOIMod := (class f).freeOIMod;

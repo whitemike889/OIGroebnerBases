@@ -41,7 +41,7 @@ export {
     "leadOITerm", "oiTermDiv",
     "makeFreeOIModule", "installSchreyerMonomialOrder", "makeMonic", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
     "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz",
-    "oiRes"
+    "oiRes", "isComplex"
 }
 
 scan({
@@ -445,7 +445,7 @@ makeBasisElement BasisIndex := b -> (
 -- PURPOSE: Convert an element from vector form to a list of OITerms
 -- INPUT: A VectorInWidth 'f'
 -- OUTPUT: A List of OITerms corresponding to the terms of f sorted from greatest to least
--- COMMENT: "Combine => true" will combine like terms (used for printing vectors)
+-- COMMENT: "Combine => true" will combine like terms
 getOITermsFromVector = method(TypicalValue => List, Options => {Combine => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
     freeOIMod := (class f).freeOIMod;
@@ -1062,8 +1062,8 @@ net OIResolution := C -> (
 )
 
 describe OIResolution := C -> (
-    n := net "";
-    for i to #C.modules - 1 do n = n | toString i | ": "|net C.modules#i || "";
+    n := "0: "|net C.modules#0;
+    for i from 1 to #C.modules - 1 do n = n || toString i | ": "|net C.modules#i;
     n
 )
 
@@ -1081,7 +1081,7 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
     if #L == 0 then error "Expected nonempty List";
 
     -- Return the resolution if it already exists
-    if oiResCache#?(L, n) then return oiResCache#(L, n);
+    if oiResCache#?(L, n, opts.FastNonminimal, opts.MinimalOIGB) then return oiResCache#(L, n, opts.FastNonminimal, opts.MinimalOIGB);
 
     ddMut := new MutableList;
     modulesMut := new MutableList;
@@ -1093,10 +1093,10 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
     if opts.Verbose then print "Computing an OI-Groebner basis...";
     oigb := oiGB(L, Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
 
-    if opts.Verbose then print "Computing syzygies...";
+    if opts.Verbose then print "----------------------------------------\n----------------------------------------\nComputing syzygies...";
     currentGB := oigb;
     for i to n do (
-        syzGens := oiSyz(currentGB, value concatenate(e, toString i), Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
+        syzGens := oiSyz(currentGB, getSymbol concatenate(e, toString i), Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
         currentGB = syzGens;
         if #syzGens == 0 then (
             modulesMut#i = 0;
@@ -1109,12 +1109,142 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
     );
 
     -- Minimize the resolution
+    if #ddMut > 1 and isHomogeneous ddMut#0 and not opts.FastNonminimal then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\nMinimizing resolution...";
+        done := false;
+        while not done do (
+            done = true;
+
+            -- Look for units on identity basis elements
+            unitFound := false;
+            local data;
+            for i from 1 to #ddMut - 1 do (
+                ddMap := ddMut#i;
+                if ddMap === 0 then continue;
+                srcMod := source ddMap;
+                targMod := target ddMap;
+                for j to #ddMap.genImages - 1 do (
+                    oiTerms := getOITermsFromVector(ddMap.genImages#j, Combine => true);
+                    for term in oiTerms do (
+                        b := term.basisIndex;
+                        if b.oiMap.assignment === toList(1..b.oiMap.Width) then
+                            if isUnit term.ringElement then (
+                                unitFound = true;
+                                done = false;
+                                data = {i, j, term};
+                                break
+                            );
+                        if unitFound then break
+                    );
+                    if unitFound then break
+                );
+                if unitFound then break
+            );
+            
+            -- Prune the sequence
+            if unitFound then (
+                term := data#2;
+                targBasisIdx := term.basisIndex.idx - 1; -- Recall idx's start at 1
+                srcBasisIdx := data#1;
+                ddMap := ddMut#(data#0);
+                srcMod := source ddMap;
+                targMod := target ddMap;
+
+                -- Compute the new modules
+                newSrcMod := makeFreeOIModule(srcMod.polyOIAlg, srcMod.basisSym, remove(srcMod.genWidths, srcBasisIdx), DegreeShifts => remove(srcMod.degShifts, srcBasisIdx));
+                newTargMod := makeFreeOIModule(targMod.polyOIAlg, targMod.basisSym, remove(targMod.genWidths, targBasisIdx), DegreeShifts => remove(targMod.degShifts, targBasisIdx));
+                
+                -- Compute the new differential
+                newGenImages := new List;
+                targBasisOIMap := makeOIMap(targMod.genWidths#targBasisIdx, toList(1..targMod.genWidths#targBasisIdx));
+                srcBasisOIMap := makeOIMap(srcMod.genWidths#srcBasisIdx, toList(1..srcMod.genWidths#srcBasisIdx));
+                for i to #srcMod.genWidths - 1 do (
+                    if i == srcBasisIdx then continue;
+                    oiTerms := getOITermsFromVector(ddMap.genImages#i, Combine => true);
+                    stuff := 0_(getFreeModuleInWidth(srcMod, srcMod.genWidths#i));
+                    oiMaps := getOIMaps(targMod.genWidths#targBasisIdx, srcMod.genWidths#i);
+
+                    -- Calculate the stuff to subtract off
+                    if #oiMaps > 0 then (
+                        for term in oiTerms do (
+                            b := term.basisIndex;
+                            if not b.idx == targBasisIdx + 1 then continue;
+                            if not b.oiMap.Width == srcMod.genWidths#i then continue;
+
+                            local oiMap;
+                            for oimap in oiMaps do
+                                if b.oiMap === composeOIMaps(oimap, targBasisOIMap) then (oiMap = oimap; break);
+                            
+                            modMap := getInducedModuleMap(srcMod, oiMap);
+                            basisElt := getVectorFromOITerms {makeBasisElement makeBasisIndex(srcMod, srcBasisOIMap, srcBasisIdx + 1)};
+                            stuff = stuff + term.ringElement * modMap basisElt
+                        )
+                    );
+
+                    -- Calculate the new image
+                    basisElt := getVectorFromOITerms {makeBasisElement makeBasisIndex(srcMod, makeOIMap(srcMod.genWidths#i, toList(1..srcMod.genWidths#i)), i + 1)};
+                    field := srcMod.polyOIAlg.baseField;
+                    newGenImage0 := ddMap(basisElt - lift(1 // term.ringElement, field) * stuff);
+                    newOITerms := getOITermsFromVector(newGenImage0, Combine => true);
+                    newGenImage := 0_(getFreeModuleInWidth(newTargMod, widthOfElement newGenImage0));
+                    for newTerm in newOITerms do (
+                        idx := newTerm.basisIndex.idx;
+                        if idx > targBasisIdx + 1 then idx = idx - 1;
+                        newGenImage = newGenImage + getVectorFromOITerms {makeOITerm(newTerm.ringElement, makeBasisIndex(newTargMod, newTerm.basisIndex.oiMap, idx))}
+                    );
+                    newGenImages = append(newGenImages, newGenImage)
+                );
+
+                ddMut#(data#0) = makeFreeOIModuleMap(newTargMod, newSrcMod, newGenImages);
+                modulesMut#(data#0) = newSrcMod;
+                modulesMut#(data#0 - 1) = newTargMod;
+
+                -- Adjust the adjacent differentials
+                -- Below map
+                ddMap := ddMut#(data#0 - 1);
+                ddMut#(data#0 - 1) = makeFreeOIModuleMap(target ddMap, newTargMod, remove(ddMap.genImages, targBasisIdx)); -- Restriction
+
+                -- Above map
+                if data#0 < #ddMut - 1 then (
+                    newGenImages := new List;
+                    ddMap := ddMut#(1 + data#0);
+                    srcMod := source ddMap;
+                    targMod := target ddMap;
+
+                    for i to #ddMap.genImages - 1 do (
+                        oiTerms := getOITermsFromVector ddMap.genImages#i;
+                        newTerms := new List;
+                        for term in oiTerms do (
+                            idx := term.basisIndex.idx;
+                            if idx == srcBasisIdx + 1 then continue; -- Projection
+                            if idx > srcBasisIdx + 1 then idx = idx - 1; -- Relabel
+                            newTerms = append(newTerms, makeOITerm(term.ringElement, makeBasisIndex(newSrcMod, term.basisIndex.oiMap, idx)));
+                        );
+
+                        newGenImages = append(newGenImages, getVectorFromOITerms newTerms)
+                    );
+
+                    srcMod.monOrder#0 = Lex;
+                    ddMut#(1 + data#0) = makeFreeOIModuleMap(newSrcMod, srcMod, newGenImages)
+                )
+            )
+        )
+    );
 
     ret := new OIResolution from {dd => new List from ddMut, modules => new List from modulesMut};
 
     -- Store the resolution
+    oiResCache#(L, n, opts.FastNonminimal, opts.MinimalOIGB) = ret;
 
     ret
+)
+
+-- PURPOSE: Verify that an OIResolution is a complex
+-- INPUT: An OIResolution 'C'
+-- OUTPUT: true if C is a complex, false otherwise
+isComplex = method(TypicalValue => Boolean)
+isComplex OIResoluton := C -> (
+    if #C.dd < 2 then error "Expected a sequence with at least 2 maps";
 )
 
 --------------------------------------------------------------------------------
@@ -1213,6 +1343,11 @@ installBasisElements(F, 3);
 installBasisElements(F, 4);
 
 -- Res example 1
+F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+F_2; b3 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1, b2, b3}, 1, Verbose => true)
+
+-- Res example 2
 F_1; b1 = x_(1,1)*e_(1,{1},1);
 F_2; b2 = x_(1,2)*e_(2,{1},1);
 C = oiRes({b1,b2}, 0, Verbose => true)
