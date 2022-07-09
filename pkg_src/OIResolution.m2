@@ -158,15 +158,15 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
 
                 -- Adjust the adjacent differentials
                 -- Below map
-                ddMap := ddMut#(data#0 - 1);
+                ddMap = ddMut#(data#0 - 1);
                 ddMut#(data#0 - 1) = makeFreeOIModuleMap(target ddMap, newTargMod, remove(ddMap.genImages, targBasisIdx)); -- Restriction
 
                 -- Above map
                 if data#0 < #ddMut - 1 then (
-                    newGenImages := new MutableList;
-                    ddMap := ddMut#(1 + data#0);
-                    srcMod := source ddMap;
-                    targMod := target ddMap;
+                    newGenImages = new MutableList;
+                    ddMap = ddMut#(1 + data#0);
+                    srcMod = source ddMap;
+                    targMod = target ddMap;
 
                     for i to #ddMap.genImages - 1 do (
                         oiTerms := getOITermsFromVector ddMap.genImages#i;

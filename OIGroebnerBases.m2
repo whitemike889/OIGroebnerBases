@@ -39,7 +39,7 @@ export {
     "makePolynomialOIAlgebra", "getAlgebraInWidth",
     "makeFreeOIModuleMap",
     "leadOITerm", "oiTermDiv",
-    "makeFreeOIModule", "installSchreyerMonomialOrder", "makeMonic", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
+    "makeFreeOIModule", "getDegShifts", "getGenWidths", "installSchreyerMonomialOrder", "makeMonic", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
     "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz",
     "oiRes", "isComplex"
 }
@@ -216,6 +216,18 @@ net FreeOIModule := F -> (
     "Degree shifts: "|net F.degShifts ||
     "Monomial order: "|monOrderNet
 )
+
+-- PURPOSE: Get the generator widths of a FreeOIModule
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: F.genWidths
+getGenWidths = method(TypicalValue => List)
+getGenWidths FreeOIModule := F -> F.genWidths
+
+-- PURPOSE: Get the degree shifts of a FreeOIModule
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: F.degShifts
+getDegShifts = method(TypicalValue => List)
+getDegShifts FreeOIModule := F -> F.degShifts
 
 -- PURPOSE: Make a new FreeOIModule
 -- INPUT: '(P, e, W)', a PolynomialOIAlgebra 'P', a Symbol 'e' and a List of generator widths 'W'
@@ -1207,15 +1219,15 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
 
                 -- Adjust the adjacent differentials
                 -- Below map
-                ddMap := ddMut#(data#0 - 1);
+                ddMap = ddMut#(data#0 - 1);
                 ddMut#(data#0 - 1) = makeFreeOIModuleMap(target ddMap, newTargMod, remove(ddMap.genImages, targBasisIdx)); -- Restriction
 
                 -- Above map
                 if data#0 < #ddMut - 1 then (
-                    newGenImages := new MutableList;
-                    ddMap := ddMut#(1 + data#0);
-                    srcMod := source ddMap;
-                    targMod := target ddMap;
+                    newGenImages = new MutableList;
+                    ddMap = ddMut#(1 + data#0);
+                    srcMod = source ddMap;
+                    targMod = target ddMap;
 
                     for i to #ddMap.genImages - 1 do (
                         oiTerms := getOITermsFromVector ddMap.genImages#i;
@@ -1349,6 +1361,22 @@ x_(1,2)*d_(3,{1,3},3)-x_(1,3)*d_(3,{2,3},4)
 checkC = apply(C, makeMonic);
 checkSet = apply(join(width2stuff, width3stuff), makeMonic);
 assert(set checkC === set checkSet)
+///
+
+-- Test 2: Compute length 1 resolution
+TEST ///
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+F_2; b3 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1, b2, b3}, 1);
+assert isComplex C;
+print net C_1;
+print keys C_1;
+assert(getGenWidths C_1 == {2,2,3,3});
+assert(getDegShifts C_1 == {-2,-3,-2,-2})
 ///
 
 end

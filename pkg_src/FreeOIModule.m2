@@ -16,6 +16,18 @@ net FreeOIModule := F -> (
     "Monomial order: "|monOrderNet
 )
 
+-- PURPOSE: Get the generator widths of a FreeOIModule
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: F.genWidths
+getGenWidths = method(TypicalValue => List)
+getGenWidths FreeOIModule := F -> F.genWidths
+
+-- PURPOSE: Get the degree shifts of a FreeOIModule
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: F.degShifts
+getDegShifts = method(TypicalValue => List)
+getDegShifts FreeOIModule := F -> F.degShifts
+
 -- PURPOSE: Make a new FreeOIModule
 -- INPUT: '(P, e, W)', a PolynomialOIAlgebra 'P', a Symbol 'e' and a List of generator widths 'W'
 -- OUTPUT: A FreeOIModule made from P, e and W
