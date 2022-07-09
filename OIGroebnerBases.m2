@@ -1132,6 +1132,7 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                                 unitFound = true;
                                 done = false;
                                 data = {i, j, term};
+                                if opts.Verbose then print("Unit found on term: "|net term);
                                 break
                             );
                         if unitFound then break
@@ -1150,12 +1151,15 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                 srcMod := source ddMap;
                 targMod := target ddMap;
 
+                if opts.Verbose then print "Pruning...";
+
                 -- Compute the new modules
                 newSrcMod := makeFreeOIModule(srcMod.polyOIAlg, srcMod.basisSym, remove(srcMod.genWidths, srcBasisIdx), DegreeShifts => remove(srcMod.degShifts, srcBasisIdx));
                 newTargMod := makeFreeOIModule(targMod.polyOIAlg, targMod.basisSym, remove(targMod.genWidths, targBasisIdx), DegreeShifts => remove(targMod.degShifts, targBasisIdx));
                 
                 -- Compute the new differential
-                newGenImages := new List;
+                newGenImages := new MutableList;
+                k := 0;
                 targBasisOIMap := makeOIMap(targMod.genWidths#targBasisIdx, toList(1..targMod.genWidths#targBasisIdx));
                 srcBasisOIMap := makeOIMap(srcMod.genWidths#srcBasisIdx, toList(1..srcMod.genWidths#srcBasisIdx));
                 for i to #srcMod.genWidths - 1 do (
@@ -1192,10 +1196,12 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                         if idx > targBasisIdx + 1 then idx = idx - 1;
                         newGenImage = newGenImage + getVectorFromOITerms {makeOITerm(newTerm.ringElement, makeBasisIndex(newTargMod, newTerm.basisIndex.oiMap, idx))}
                     );
-                    newGenImages = append(newGenImages, newGenImage)
+
+                    newGenImages#k = newGenImage;
+                    k = k + 1
                 );
 
-                ddMut#(data#0) = makeFreeOIModuleMap(newTargMod, newSrcMod, newGenImages);
+                ddMut#(data#0) = makeFreeOIModuleMap(newTargMod, newSrcMod, new List from newGenImages);
                 modulesMut#(data#0) = newSrcMod;
                 modulesMut#(data#0 - 1) = newTargMod;
 
@@ -1206,26 +1212,28 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
 
                 -- Above map
                 if data#0 < #ddMut - 1 then (
-                    newGenImages := new List;
+                    newGenImages := new MutableList;
                     ddMap := ddMut#(1 + data#0);
                     srcMod := source ddMap;
                     targMod := target ddMap;
 
                     for i to #ddMap.genImages - 1 do (
                         oiTerms := getOITermsFromVector ddMap.genImages#i;
-                        newTerms := new List;
+                        newTerms := new MutableList;
+                        k := 0;
                         for term in oiTerms do (
                             idx := term.basisIndex.idx;
                             if idx == srcBasisIdx + 1 then continue; -- Projection
                             if idx > srcBasisIdx + 1 then idx = idx - 1; -- Relabel
-                            newTerms = append(newTerms, makeOITerm(term.ringElement, makeBasisIndex(newSrcMod, term.basisIndex.oiMap, idx)));
+                            newTerms#k = makeOITerm(term.ringElement, makeBasisIndex(newSrcMod, term.basisIndex.oiMap, idx));
+                            k = k + 1;
                         );
 
-                        newGenImages = append(newGenImages, getVectorFromOITerms newTerms)
+                        newGenImages#i = getVectorFromOITerms new List from newTerms
                     );
 
                     srcMod.monOrder#0 = Lex;
-                    ddMut#(1 + data#0) = makeFreeOIModuleMap(newSrcMod, srcMod, newGenImages)
+                    ddMut#(1 + data#0) = makeFreeOIModuleMap(newSrcMod, srcMod, new List from newGenImages)
                 )
             )
         )
@@ -1243,8 +1251,22 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
 -- INPUT: An OIResolution 'C'
 -- OUTPUT: true if C is a complex, false otherwise
 isComplex = method(TypicalValue => Boolean)
-isComplex OIResoluton := C -> (
+isComplex OIResolution := C -> (
     if #C.dd < 2 then error "Expected a sequence with at least 2 maps";
+
+    -- Check if the maps compose to zero
+    for i from 1 to #C.dd - 1 do (
+        modMap0 := C.dd#(i - 1);
+        modMap1 := C.dd#i;
+        srcMod := source modMap1;
+        basisElts := for i to #srcMod.genWidths - 1 list makeBasisElement makeBasisIndex(srcMod, makeOIMap(srcMod.genWidths#i, toList(1..srcMod.genWidths#i)), i + 1);
+        for basisElt in basisElts do (
+            result := modMap0 modMap1 getVectorFromOITerms {basisElt};
+            if not isZero result then return false
+        )
+    );
+
+    true
 )
 
 --------------------------------------------------------------------------------
