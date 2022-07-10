@@ -3,11 +3,6 @@
 -- COMMENT: assignment should specify how a BasisIndex in the source free module gets mapped to a basis index in the target free module
 InducedModuleMap = new Type of HashTable
 
-net InducedModuleMap := f -> "Source module: "|net source f ||
-    "Target module: "|net target f ||
-    "OI-map: "|toString f.oiMap ||
-    "Assignment: "|net f.assignment
-
 source InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, #f.oiMap.assignment)
 target InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, f.oiMap.Width)
 

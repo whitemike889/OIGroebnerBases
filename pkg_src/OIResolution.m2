@@ -4,7 +4,6 @@ oiResCache = new MutableHashTable
 -- Define the new Type OIResolution
 -- COMMENT: Should be of the form {dd => List, modules => List}
 OIResolution = new Type of HashTable
-OIResolution.synonym = "OI-resolution"
 
 net OIResolution := C -> (
     n := "0: "|toString C.modules#0;
@@ -13,8 +12,8 @@ net OIResolution := C -> (
 )
 
 describe OIResolution := C -> (
-    n := "0: "|net C.modules#0;
-    for i from 1 to #C.modules - 1 do n = n || toString i | ": "|net C.modules#i;
+    n := "0: Module: "|net C.modules#0||"Differential: "|net C.dd#0;
+    for i from 1 to #C.modules - 1 do n = n || toString i | ": Module: "|net C.modules#i||"Differential: "|net C.dd#i;
     n
 )
 

@@ -1,7 +1,6 @@
 -- Define the new type PolynomialOIAlgebra
 -- COMMENT: Should be of the form {baseField => Ring, varRows => ZZ, varSym => Symbol, algebras => MutableHashTable, maps => MutableHashTable}
 PolynomialOIAlgebra = new Type of HashTable
-PolynomialOIAlgebra.synonym = "polynomial OI-algebra"
 
 toString PolynomialOIAlgebra := P -> "base field => "|toString P.baseField|", variable rows => "|toString P.varRows|", variable symbol => "|toString P.varSym
 

@@ -3,17 +3,18 @@
 -- PURPOSE: Algorithms for computing Gröbner bases, syzygies and free resolutions for submodules of free OI-modules over Noetherian polynomial OI-algebras
 -- PROGRAMMER: Michael Morrow
 -- LAST UPDATED: July 2022
+-- FIRST OFFICIAL RELEASE: 7/10/2022
 -- COMMENT: This package was made using Macaulay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
 newPackage("OIGroebnerBases",
     Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
-    Version => "0.1",
+    Version => "1.0",
     Date => "April 4, 2022", -- Project birthday
     Keywords => { "Commutative Algebra" },
     Authors => {
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
-    DebuggingMode => true,
+    DebuggingMode => false,
     HomePage => "https://github.com/morrowmh/OIGroebnerBases"
 )
 

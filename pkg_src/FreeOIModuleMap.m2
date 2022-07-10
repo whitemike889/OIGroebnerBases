@@ -4,9 +4,6 @@
 -- COMMENT: The order of genImages matters, i.e. the width of genImages#i should equal srcMod.genWidths#i
 -- COMMENT: To be a graded map, genImages should consist of homogeneous elements and degree(genImages#i) should equal -srcMod.degShifts#i
 FreeOIModuleMap = new Type of HashTable
-FreeOIModuleMap.synonym = "free OI-module map"
-
-toString FreeOIModuleMap := f -> "source module => "|toString f.srcMod|", target module => "|toString f.targMod|", generator images => "|net f.genImages
 
 net FreeOIModuleMap := f -> "Source module: "|toString f.srcMod ||
     "Target module: "|toString f.targMod ||
@@ -21,9 +18,11 @@ target FreeOIModuleMap := f -> f.targMod
 makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
 makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImages => L}
 
--- Install juxtaposition method for FreeOIModuleMap and List
--- COMMENT: Applies a FreeOIModuleMap to a List of OITerms and returns the resulting VectorInWidth
-FreeOIModuleMap List := (f, oiTerms) -> (
+-- PURPOSE: Apply a FreeOIModuleMap to a List of OITerms
+-- INPUT: '(f, oiTerms)', a FreeOIModuleMap 'f' and a List of OITerms 'oiTerms'
+-- OUTPUT: f(oiTerms)
+fommToOITerms = method(TypicalValue => VectorInWidth)
+fommToOITerms(FreeOIModuleMap, List) := (f, oiTerms) -> (
     if #oiTerms == 0 then error "Cannot apply FreeOIModuleMap to an empty list";
 
     -- Generate the new terms
@@ -44,13 +43,17 @@ FreeOIModuleMap List := (f, oiTerms) -> (
 )
 
 -- Install juxtaposition method for FreeOIModuleMap and List
+-- COMMENT: Applies a FreeOIModuleMap to a List of VectorInWidths
+FreeOIModuleMap List := (f, L) -> for i to #L - 1 list f L#i
+
+-- Install juxtaposition method for FreeOIModuleMap and List
 -- COMMENT: Applies a FreeOIModuleMap to the List of OITerms obtained from a VectorInWidth
 FreeOIModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := freeOIModuleFromElement v;
     if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
 
     oiTerms := getOITermsFromVector v;
-    f oiTerms
+    fommToOITerms(f, oiTerms)
 )
 
 -- Check if a FreeOIModuleMap is a graded map

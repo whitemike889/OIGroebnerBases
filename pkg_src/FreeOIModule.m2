@@ -1,7 +1,6 @@
 -- Define the new type FreeOIModule
 -- COMMENT: Should be of the form {polyOIAlg => PolynomialOIAlgebra, basisSym => Symbol, genWidths => List, degShifts => List, monOrder => MutableList, modules => MutableHashTable, maps => MutableHashTable}
 FreeOIModule = new Type of HashTable
-FreeOIModule.synonym = "free OI-module"
 
 toString FreeOIModule := F -> "generator widths => "|toString F.genWidths |", degree shifts => "|toString F.degShifts
 
@@ -102,16 +101,23 @@ net VectorInWidth := f -> (
 -- COMMENT: Compares vectors by looking at their lead terms
 VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
 
--- PURPOSE: Make a VectorInWidth monic
--- INPUT: A VectorInWidth 'f'
--- OUTPUT: f // leadCoefficient f
-makeMonic = method(TypicalValue => VectorInWidth)
-makeMonic VectorInWidth := f -> (
-    oiterms := getOITermsFromVector f;
-    lotf := leadOITerm f;
-    lcf := leadCoefficient lotf.ringElement;
-    newTerms := for oiterm in oiterms list makeOITerm(oiterm.ringElement // lcf, oiterm.basisIndex);
-    getVectorFromOITerms newTerms
+-- PURPOSE: Make a List of VectorInWidths monic
+-- INPUT: A List 'L'
+-- OUTPUT: A List containing f // leadCoefficient f for all f in L
+makeMonic = method(TypicalValue => List)
+makeMonic List := L -> (
+    ret := new MutableList;
+
+    for i to #L - 1 do (
+        f := L#i;
+        oiterms := getOITermsFromVector f;
+        lotf := leadOITerm f;
+        lcf := leadCoefficient lotf.ringElement;
+        newTerms := for oiterm in oiterms list makeOITerm(oiterm.ringElement // lcf, oiterm.basisIndex);
+        ret#i = getVectorFromOITerms newTerms
+    );
+
+    new List from ret
 )
 
 load "Terms.m2"

@@ -1,21 +1,18 @@
 export {
     -- Types
-    "OIMap",
     "PolynomialOIAlgebra",
     "FreeOIModuleMap",
     "FreeOIModule",
     "OIResolution",
 
     -- Options
-    "DegreeShifts", "Combine", "MinimalOIGB",
+    "DegreeShifts", "MinimalOIGB",
 
     -- Methods
-    "makeOIMap", "getOIMaps", "composeOIMaps",
     "makePolynomialOIAlgebra", "getAlgebraInWidth",
     "makeFreeOIModuleMap",
-    "leadOITerm", "oiTermDiv",
-    "makeFreeOIModule", "getDegShifts", "getGenWidths", "installSchreyerMonomialOrder", "makeMonic", "getMonomialOrder", "getFreeModuleInWidth", "freeOIModuleFromElement", "widthOfElement", "installBasisElement", "installBasisElements", "isZero",
-    "oiPolyDiv", "spoly", "oiGB", "isOIGB", "minimizeOIGB", "oiSyz",
+    "makeFreeOIModule", "getDegShifts", "getGenWidths", "makeMonic", "getFreeModuleInWidth", "installBasisElements",
+    "oiGB", "isOIGB", "oiSyz",
     "oiRes", "isComplex"
 }
 
@@ -25,5 +22,8 @@ scan({
     varRows, varSym, algebras, baseField, maps,
     srcMod, targMod, genImages,
     freeOIMod, idx, oiMap, ringElement, basisIndex, quo, rem, triples,
-    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, basisElements
+    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, basisElements,
+
+    -- Options
+    Combine
 }, protect)

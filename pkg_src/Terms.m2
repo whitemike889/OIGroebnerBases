@@ -49,8 +49,8 @@ OITerm ? OITerm := (f, g) -> (
     )
     else if instance(monOrder, FreeOIModuleMap) then ( -- SCHREYER ORDER
         freeOIModuleMap := monOrder;
-        imagef := freeOIModuleMap {f};
-        imageg := freeOIModuleMap {g};
+        imagef := fommToOITerms(freeOIModuleMap, {f});
+        imageg := fommToOITerms(freeOIModuleMap, {g});
         lotimf := leadOITerm imagef;
         lotimg := leadOITerm imageg;
         lomimf := makeOITerm(lotimf.ringElement // leadCoefficient lotimf.ringElement, lotimf.basisIndex);

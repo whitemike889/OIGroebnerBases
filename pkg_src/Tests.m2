@@ -13,8 +13,8 @@ B = oiGB {f, h};
 F_2; elt1 = x_(1,2)*x_(1,1)^2*e_(2,{2},1);
 F_3; elt2 = (-x_(1,3)*x_(1,2)+x_(1,3)*x_(1,1))*e_(3,{3},1);
 
-checkB = apply(B, makeMonic);
-checkSet = apply({f, h, elt1, elt2}, makeMonic);
+checkB = makeMonic B;
+checkSet = makeMonic {f, h, elt1, elt2};
 assert(set checkB === set checkSet)
 ///
 
@@ -50,8 +50,8 @@ x_(1,1)*d_(3,{2,3},4)-x_(1,2)*d_(3,{1,3},4),
 x_(1,2)*d_(3,{1,3},3)-x_(1,3)*d_(3,{2,3},4)
 };
 
-checkC = apply(C, makeMonic);
-checkSet = apply(join(width2stuff, width3stuff), makeMonic);
+checkC = makeMonic C;
+checkSet = makeMonic join(width2stuff, width3stuff);
 assert(set checkC === set checkSet)
 ///
 
