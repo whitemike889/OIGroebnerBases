@@ -30,6 +30,7 @@ doc ///
         getDegShifts
         installBasisElements
         makeMonic
+        freeOIModuleFromElement
         :Maps between free OI-modules
         FreeOIModuleMap
         makeFreeOIModuleMap
@@ -798,6 +799,33 @@ doc ///
             F_2; b3 = x_(1,2)*e_(2,{1},1);
             C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false)
             isComplex C
+///
+
+doc ///
+    Key
+        freeOIModuleFromElement
+        (freeOIModuleFromElement,Vector)
+    Headline
+        Get the FreeOIModule containing a Vector
+    Usage
+        freeOIModuleFromElement f
+    Inputs
+        f:Vector
+    Outputs
+        :FreeOIModule
+    Description
+        Text
+            If $f$ is an element of a free OI-module $\mathbf{F}$, this method returns $\mathbf{F}$.
+        Example
+            P = makePolynomialOIAlgebra(QQ,1,x);
+            F = makeFreeOIModule(P, e, {1});
+            installBasisElements(F, 1);
+            installBasisElements(F, 2);
+
+            F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+            freeOIModuleFromElement b1
+    Caveat
+        This method will error if the input is a @TO Vector@ not belonging to any @TO FreeOIModule@.
 ///
 
 doc ///

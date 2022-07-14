@@ -63,7 +63,7 @@ installBasisElements(F, 1);
 installBasisElements(F, 2);
 F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
 F_2; b3 = x_(1,2)*e_(2,{1},1);
-C = oiRes({b1, b2, b3}, 1);
+C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false);
 assert isComplex C;
 assert(getGenWidths C_1 == {2,2,3,3});
 assert(getDegShifts C_1 == {-2,-3,-2,-2})

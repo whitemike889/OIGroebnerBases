@@ -11,7 +11,7 @@ export {
     -- Methods
     "makePolynomialOIAlgebra", "getAlgebraInWidth",
     "makeFreeOIModuleMap",
-    "makeFreeOIModule", "getDegShifts", "getGenWidths", "makeMonic", "getFreeModuleInWidth", "installBasisElements",
+    "makeFreeOIModule", "getDegShifts", "getGenWidths", "makeMonic", "getFreeModuleInWidth", "installBasisElements", "freeOIModuleFromElement",
     "oiGB", "isOIGB", "oiSyz",
     "oiRes", "isComplex"
 }

@@ -8,7 +8,7 @@
 
 newPackage("OIGroebnerBases",
     Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
-    Version => "1.0.0",
+    Version => "1.0.2",
     Date => "April 4, 2022", -- Project birthday
     Keywords => { "Commutative Algebra" },
     Authors => {
@@ -37,7 +37,7 @@ export {
     -- Methods
     "makePolynomialOIAlgebra", "getAlgebraInWidth",
     "makeFreeOIModuleMap",
-    "makeFreeOIModule", "getDegShifts", "getGenWidths", "makeMonic", "getFreeModuleInWidth", "installBasisElements",
+    "makeFreeOIModule", "getDegShifts", "getGenWidths", "makeMonic", "getFreeModuleInWidth", "installBasisElements", "freeOIModuleFromElement",
     "oiGB", "isOIGB", "oiSyz",
     "oiRes", "isComplex"
 }
@@ -689,6 +689,11 @@ widthOfElement VectorInWidth := f -> (class f).Width
 -- OUTPUT: The FreeOIModule containing f
 freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
 freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
+
+freeOIModuleFromElement Vector := f -> (
+    if not (class f).?freeOIMod then error "Element does not belong to a FreeOIModule";
+    freeOIModuleFromElement f
+)
 
 -- Define the new type InducedModuleMap
 -- COMMENT: Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, assignment => HashTable}
@@ -1364,6 +1369,7 @@ doc ///
         getDegShifts
         installBasisElements
         makeMonic
+        freeOIModuleFromElement
         :Maps between free OI-modules
         FreeOIModuleMap
         makeFreeOIModuleMap
@@ -2136,6 +2142,33 @@ doc ///
 
 doc ///
     Key
+        freeOIModuleFromElement
+        (freeOIModuleFromElement,Vector)
+    Headline
+        Get the FreeOIModule containing a Vector
+    Usage
+        freeOIModuleFromElement f
+    Inputs
+        f:Vector
+    Outputs
+        :FreeOIModule
+    Description
+        Text
+            If $f$ is an element of a free OI-module $\mathbf{F}$, this method returns $\mathbf{F}$.
+        Example
+            P = makePolynomialOIAlgebra(QQ,1,x);
+            F = makeFreeOIModule(P, e, {1});
+            installBasisElements(F, 1);
+            installBasisElements(F, 2);
+
+            F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+            freeOIModuleFromElement b1
+    Caveat
+        This method will error if the input is a @TO Vector@ not belonging to any @TO FreeOIModule@.
+///
+
+doc ///
+    Key
         oiGB
         (oiGB,List)
         [oiGB,Verbose]
@@ -2239,7 +2272,7 @@ installBasisElements(F, 1);
 installBasisElements(F, 2);
 F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
 F_2; b3 = x_(1,2)*e_(2,{1},1);
-C = oiRes({b1, b2, b3}, 1);
+C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false);
 assert isComplex C;
 assert(getGenWidths C_1 == {2,2,3,3});
 assert(getDegShifts C_1 == {-2,-3,-2,-2})
@@ -2255,8 +2288,8 @@ F = makeFreeOIModule(P, e, {1,2});
 installBasisElements(F, 1);
 installBasisElements(F, 2);
 F_1; b1 = x_(1,1)*e_(1,{1},1);
-F_2; b2 = x_(1,1)^2*e_(2,{1,2},2); b3 = x_(1,1)*x_(1,2)*e_(2,{2},1);
-oiRes({b1,b2,b3}, 1, Verbose => true)
+F_2; b2 = x_(1,2)^2*e_(2,{1,2},2); b3 = e_(2,{2},1);
+oiRes({b1,b2,b3}, 2, Verbose => true)
 
 restart
 load "OIGroebnerBases.m2"

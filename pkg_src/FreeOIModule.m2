@@ -211,3 +211,8 @@ widthOfElement VectorInWidth := f -> (class f).Width
 -- OUTPUT: The FreeOIModule containing f
 freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
 freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
+
+freeOIModuleFromElement Vector := f -> (
+    if not (class f).?freeOIMod then error "Element does not belong to a FreeOIModule";
+    freeOIModuleFromElement f
+)
