@@ -80,6 +80,7 @@ makeBasisElement BasisIndex := b -> (
 -- COMMENT: "Combine => true" will combine like terms
 getOITermsFromVector = method(TypicalValue => List, Options => {Combine => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
+    if isZero f then return null;
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);

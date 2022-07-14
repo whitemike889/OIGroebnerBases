@@ -34,8 +34,6 @@ getDegShifts FreeOIModule := F -> F.degShifts
 -- COMMENT: Default degree shifts are all zero
 makeFreeOIModule = method(TypicalValue => FreeOIModule, Options => {DegreeShifts => null})
 makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
-    if #W == 0 then error "Expected a non-empty list of generator widths";
-    
     local shifts;
     if opts.DegreeShifts === null then shifts = #W : 0
     else if instance(opts.DegreeShifts, List) then shifts = opts.DegreeShifts
@@ -87,6 +85,7 @@ installSchreyerMonomialOrder = method()
 installSchreyerMonomialOrder FreeOIModuleMap := f -> f.srcMod.monOrder#0 = f
 
 net VectorInWidth := f -> (
+    if isZero f then return net 0;
     oiTerms := getOITermsFromVector(f, Combine => true);
     if #oiTerms == 0 then return net 0;
     if #oiTerms == 1 then return net oiTerms#0;
@@ -121,6 +120,11 @@ makeMonic List := L -> (
 )
 
 load "Terms.m2"
+
+-- PURPOSE: Check if a FreeOIModule is zero
+-- INPUT: A FreeOIModule 'F'
+-- OUTPUT: true if #F.genWidths = 0, false otherwise
+isZero FreeOIModule := F -> #F.genWidths == 0
 
 -- PURPOSE: Get the free module from a FreeOIModule in a specified width
 -- INPUT: '(F, n)', a FreeOIModule 'F' and a width 'n'

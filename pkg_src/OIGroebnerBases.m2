@@ -8,7 +8,7 @@
 
 newPackage("OIGroebnerBases",
     Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
-    Version => "1.0.0",
+    Version => "1.0.1",
     Date => "April 4, 2022", -- Project birthday
     Keywords => { "Commutative Algebra" },
     Authors => {
@@ -64,7 +64,16 @@ load "Tests.m2"
 
 end
 
--- Scratch work section
+-- Scratch work 
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1);
+F_2; b2 = x_(1,2)^2*e_(2,{1,2},2); b3 = e_(2,{2},1);
+oiRes({b1,b2,b3}, 2, Verbose => true)
 
 restart
 load "OIGroebnerBases.m2"

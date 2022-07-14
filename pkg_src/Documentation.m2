@@ -556,7 +556,7 @@ doc ///
         Text
             If @TT "MinimalOIGB => false"@ is given, then the algorithm will not take the extra steps to remove redundant elements from the basis. Note that by "minimal" we mean minimal as a Gröbner basis, not necessarily as a generating set.
 
-            If @TT "MinimalOIGB => true"@ is given then the algorithm will minimize the Gröbner basis. Most methods have this as the default option (all but @TO oiRes@).
+            If @TT "MinimalOIGB => true"@ is given then the algorithm will minimize the Gröbner basis.
         Example
             P = makePolynomialOIAlgebra(QQ,1,x);
             F = makeFreeOIModule(P, e, {1});
@@ -676,7 +676,7 @@ doc ///
 
             If $B$ consists of homogeneous elements and the option @TT "FastNonminimal => false"@ is given (which it is by default) then the maps in the sequence will be minimized (in the sense of Definition 3.1 of @TO2{"Bibliography","[FN]"}@).
 
-            If the option @TT "MinimalOIGB => true"@ is given, then a minimal Gröbner basis will be computed at each step. Since this greatly increases computation time, the option is set to false by default.
+            If the option @TT "MinimalOIGB => false"@ is given, then the algorithm will not take the extra steps to remove redundant elements from the basis. Note that by "minimal" we mean minimal as a Gröbner basis, not necessarily as a generating set.
 
             The option @TT "Verbose => true"@ will output (a lot) of debug information.
         Example
@@ -687,7 +687,8 @@ doc ///
 
             F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
             F_2; b3 = x_(1,2)*e_(2,{1},1);
-            C = oiRes({b1, b2, b3}, 1)
+            oiRes({b1, b2, b3}, 1)
+            oiRes({b1, b2, b3}, 1, MinimalOIGB => false)
     Caveat
         Even though the maps in the sequence are minimized, the $n^{\text{th}}$ module in the sequence may not have minimal rank since the $(n+1)^{\text{st}}$ map (which has not been computed yet) may not be minimal.
 ///
@@ -715,7 +716,7 @@ doc ///
 
             F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
             F_2; b3 = x_(1,2)*e_(2,{1},1);
-            C = oiRes({b1, b2, b3}, 1);
+            C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false);
             C_0
             C_1
 ///
@@ -742,7 +743,7 @@ doc ///
 
             F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
             F_2; b3 = x_(1,2)*e_(2,{1},1);
-            C = oiRes({b1, b2, b3}, 1);
+            C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false);
             describe C
 ///
 
@@ -768,7 +769,7 @@ doc ///
 
             F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
             F_2; b3 = x_(1,2)*e_(2,{1},1);
-            C = oiRes({b1, b2, b3}, 1);
+            C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false);
             net C
 ///
 
@@ -795,7 +796,7 @@ doc ///
 
             F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
             F_2; b3 = x_(1,2)*e_(2,{1},1);
-            C = oiRes({b1, b2, b3}, 1)
+            C = oiRes({b1, b2, b3}, 1, MinimalOIGB => false)
             isComplex C
 ///
 

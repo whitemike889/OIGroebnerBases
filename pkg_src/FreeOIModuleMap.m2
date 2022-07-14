@@ -18,12 +18,23 @@ target FreeOIModuleMap := f -> f.targMod
 makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
 makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImages => L}
 
+-- PURPOSE: Check if a FreeOIModuleMap is zero
+-- INPUT: A FreeOIModuleMap 'f'
+-- OUTPUT: true if f is the zero map, false otherwise
+isZero FreeOIModuleMap := f -> isZero f.srcMod or isZero f.targMod
+
 -- PURPOSE: Apply a FreeOIModuleMap to a List of OITerms
 -- INPUT: '(f, oiTerms)', a FreeOIModuleMap 'f' and a List of OITerms 'oiTerms'
--- OUTPUT: f(oiTerms)
+-- OUTPUT: The VectorInWidth f(oiTerms)
 fommToOITerms = method(TypicalValue => VectorInWidth)
 fommToOITerms(FreeOIModuleMap, List) := (f, oiTerms) -> (
     if #oiTerms == 0 then error "Cannot apply FreeOIModuleMap to an empty list";
+
+    -- Handle the zero map case
+    if isZero f then (
+        Width := (oiTerms#0).basisIndex.oiMap.Width;
+        return 0_(getFreeModuleInWidth(f.targMod, Width))
+    );
 
     -- Generate the new terms
     newTerms := new MutableList;
@@ -37,9 +48,7 @@ fommToOITerms(FreeOIModuleMap, List) := (f, oiTerms) -> (
     );
 
     -- Sum the terms up
-    ret := newTerms#0;
-    for i from 1 to #newTerms - 1 do ret = ret + newTerms#i;
-    ret
+    sum toList newTerms
 )
 
 -- Install juxtaposition method for FreeOIModuleMap and List
@@ -52,12 +61,20 @@ FreeOIModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := freeOIModuleFromElement v;
     if not source f === freeOIMod then error "Element "|net v|" does not belong to source of "|toString f;
 
+    -- Handle the zero map and zero vector cases
+    if isZero f or isZero v then (
+        Width := widthOfElement v;
+        return 0_(getFreeModuleInWidth(f.targMod, Width))
+    );
+
     oiTerms := getOITermsFromVector v;
     fommToOITerms(f, oiTerms)
 )
 
 -- Check if a FreeOIModuleMap is a graded map
 isHomogeneous FreeOIModuleMap := f -> (
+    if isZero f then return true;
+
     for elt in f.genImages do (
         degs := for t in terms elt list degree t;
         if not #(set degs) == 1 then return false
