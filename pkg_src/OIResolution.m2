@@ -136,7 +136,7 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                         oiMaps := getOIMaps(targMod.genWidths#targBasisIdx, srcMod.genWidths#i);
 
                         -- Calculate the stuff to subtract off
-                        if #oiMaps > 0 then
+                        if #oiMaps > 0 and #oiTerms > 0 then
                             for term in oiTerms do (
                                 b := term.basisIndex;
                                 if not b.idx == targBasisIdx + 1 then continue;

@@ -62,5 +62,11 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
     if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
 
+    -- Handle the zero vector
+    if isZero v then (
+        targWidth := f.oiMap.Width;
+        return 0_(getFreeModuleInWidth(freeOIMod, targWidth))
+    );
+
     f getOITermsFromVector v
 )

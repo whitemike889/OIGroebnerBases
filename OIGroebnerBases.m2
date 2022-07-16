@@ -14,7 +14,7 @@ newPackage("OIGroebnerBases",
     Authors => {
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
-    DebuggingMode => false,
+    DebuggingMode => true,
     HomePage => "https://github.com/morrowmh/OIGroebnerBases"
 )
 
@@ -482,7 +482,7 @@ makeBasisElement BasisIndex := b -> (
 -- COMMENT: "Combine => true" will combine like terms
 getOITermsFromVector = method(TypicalValue => List, Options => {Combine => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
-    if isZero f then return null;
+    if isZero f then return {};
     freeOIMod := (class f).freeOIMod;
     Width := (class f).Width;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
@@ -758,6 +758,12 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIModFromVector := freeOIModuleFromElement v;
     if not freeOIMod === freeOIModFromVector then error "Incompatible free OI-modules";
     if not source f === class v then error "Element "|net v|" does not belong to source of "|toString f;
+
+    -- Handle the zero vector
+    if isZero v then (
+        targWidth := f.oiMap.Width;
+        return 0_(getFreeModuleInWidth(freeOIMod, targWidth))
+    );
 
     f getOITermsFromVector v
 )
@@ -1225,7 +1231,7 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                         oiMaps := getOIMaps(targMod.genWidths#targBasisIdx, srcMod.genWidths#i);
 
                         -- Calculate the stuff to subtract off
-                        if #oiMaps > 0 then
+                        if #oiMaps > 0 and #oiTerms > 0 then
                             for term in oiTerms do (
                                 b := term.basisIndex;
                                 if not b.idx == targBasisIdx + 1 then continue;
@@ -2284,12 +2290,12 @@ end
 
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,1,x);
-F = makeFreeOIModule(P, e, {1,2});
+F = makeFreeOIModule(P, e, {1,1,2});
 installBasisElements(F, 1);
 installBasisElements(F, 2);
-F_1; b1 = x_(1,1)*e_(1,{1},1);
-F_2; b2 = x_(1,2)^2*e_(2,{1,2},2); b3 = e_(2,{2},1);
-oiRes({b1,b2,b3}, 2, Verbose => true)
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(1,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(1,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+C = oiRes({b1,b2,b3}, 1, Verbose => true)
 
 restart
 load "OIGroebnerBases.m2"
