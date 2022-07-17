@@ -14,7 +14,7 @@ newPackage("OIGroebnerBases",
     Authors => {
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
-    DebuggingMode => true,
+    DebuggingMode => false,
     HomePage => "https://github.com/morrowmh/OIGroebnerBases"
 )
 
