@@ -109,6 +109,7 @@ makeMonic List := L -> (
 
     for i to #L - 1 do (
         f := L#i;
+        if isZero f then (ret#i = f; continue);
         oiterms := getOITermsFromVector f;
         lotf := leadOITerm f;
         lcf := leadCoefficient lotf.ringElement;

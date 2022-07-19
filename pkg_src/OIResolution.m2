@@ -197,8 +197,8 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                                 newTerms#k = makeOITerm(term.ringElement, makeBasisIndex(newSrcMod, term.basisIndex.oiMap, idx));
                                 k = k + 1;
                             );
-
-                            newGenImages#i = getVectorFromOITerms new List from newTerms
+                            
+                            if isZero ddMap.genImages#i then newGenImages#i = ddMap.genImages#i else newGenImages#i = getVectorFromOITerms new List from newTerms
                         )
                     );
 

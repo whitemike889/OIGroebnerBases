@@ -8,13 +8,13 @@
 
 newPackage("OIGroebnerBases",
     Headline => "Computation in OI-modules over Noetherian polynomial OI-algebras",
-    Version => "1.0.3",
+    Version => "1.0.4",
     Date => "April 4, 2022", -- Project birthday
     Keywords => { "Commutative Algebra" },
     Authors => {
         { Name => "Michael Morrow", HomePage => "https://michaelmorrow.org", Email => "michaelhmorrow98@gmail.com" }
     },
-    DebuggingMode => true,
+    DebuggingMode => false,
     HomePage => "https://github.com/morrowmh/OIGroebnerBases"
 )
 
@@ -390,6 +390,7 @@ makeMonic List := L -> (
 
     for i to #L - 1 do (
         f := L#i;
+        if isZero f then (ret#i = f; continue);
         oiterms := getOITermsFromVector f;
         lotf := leadOITerm f;
         lcf := leadCoefficient lotf.ringElement;
@@ -1292,8 +1293,8 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
                                 newTerms#k = makeOITerm(term.ringElement, makeBasisIndex(newSrcMod, term.basisIndex.oiMap, idx));
                                 k = k + 1;
                             );
-
-                            newGenImages#i = getVectorFromOITerms new List from newTerms
+                            
+                            if isZero ddMap.genImages#i then newGenImages#i = ddMap.genImages#i else newGenImages#i = getVectorFromOITerms new List from newTerms
                         )
                     );
 
