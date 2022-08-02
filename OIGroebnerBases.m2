@@ -2,7 +2,6 @@
 
 -- PURPOSE: Algorithms for computing Gröbner bases, syzygies and free resolutions for submodules of free OI-modules over Noetherian polynomial OI-algebras
 -- PROGRAMMER: Michael Morrow
--- LAST UPDATED: July 2022
 -- FIRST OFFICIAL RELEASE: 7/10/2022
 -- COMMENT: This package was made using Macaulay2-Package-Template, available here: https://github.com/morrowmh/Macaulay2-Package-Template
 
