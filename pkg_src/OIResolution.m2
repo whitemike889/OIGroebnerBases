@@ -42,35 +42,42 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
 
     if opts.Verbose then print "Computing an OI-Groebner basis...";
     oigb := oiGB(L, Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
-
-    if opts.Verbose then print "----------------------------------------\n----------------------------------------\nComputing syzygies...";
     currentGB := oigb;
-    for i to n do (
-        currentSymbol := getSymbol concatenate(e, toString i);
-        syzGens := oiSyz(currentGB, currentSymbol, Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
-        if #syzGens == 0 then (
-            shifts := for elt in currentGB list -degree elt;
-            widths := for elt in currentGB list widthOfElement elt;
-            modulesMut#i = makeFreeOIModule(freeOIMod.polyOIAlg, currentSymbol, widths, DegreeShifts => flatten shifts);
-            ddMut#i = makeFreeOIModuleMap(freeOIMod, modulesMut#i, currentGB);
+    currentSymbol := getSymbol concatenate(e, "0");
+    count := 0;
+    
+    if n > 0 then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\nComputing syzygies...";
+        for i to n - 1 do (
+            syzGens := oiSyz(currentGB, currentSymbol, Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
 
-            if n > 0 then (
-                currentSymbolPlusOne := getSymbol concatenate(e, toString(i + 1));
-                modulesMut#(i + 1) = makeFreeOIModule(freeOIMod.polyOIAlg, currentSymbolPlusOne, {}, DegreeShifts => {}); -- Zero module
-                ddMut#(i + 1) = makeFreeOIModuleMap(modulesMut#i, modulesMut#(i + 1), {}) -- Zero map
-            );
+            if #syzGens == 0 then break;
 
-            break
-        );
+            currentFreeOIMod0 := freeOIModuleFromElement syzGens#0;
+            currentFreeOIMod := makeFreeOIModule(currentFreeOIMod0.polyOIAlg, currentFreeOIMod0.basisSym, currentFreeOIMod0.genWidths, DegreeShifts => currentFreeOIMod0.degShifts);
+            oldFomm := getMonomialOrder currentFreeOIMod0;
+            newFomm := makeFreeOIModuleMap(target oldFomm, currentFreeOIMod, oldFomm.genImages);
+            installSchreyerMonomialOrder newFomm;
+            modulesMut#i = currentFreeOIMod;
+            ddMut#i = newFomm;
 
-        currentGB = syzGens;
-        currentFreeOIMod0 := freeOIModuleFromElement syzGens#0;
-        currentFreeOIMod := makeFreeOIModule(currentFreeOIMod0.polyOIAlg, currentFreeOIMod0.basisSym, currentFreeOIMod0.genWidths, DegreeShifts => currentFreeOIMod0.degShifts);
-        oldFomm := getMonomialOrder currentFreeOIMod0;
-        newFomm := makeFreeOIModuleMap(target oldFomm, currentFreeOIMod, oldFomm.genImages);
-        installSchreyerMonomialOrder newFomm;
-        modulesMut#i = currentFreeOIMod;
-        ddMut#i = newFomm
+            currentGB = for elt in syzGens list changeFreeOIModule(currentFreeOIMod, elt);
+            count = i + 1;
+            currentSymbol = getSymbol concatenate(e, toString count)
+        )
+    );
+
+    shifts := for elt in currentGB list -degree elt;
+    widths := for elt in currentGB list widthOfElement elt;
+    modulesMut#count = makeFreeOIModule(freeOIMod.polyOIAlg, currentSymbol, widths, DegreeShifts => flatten shifts);
+    if count == 0 then ddMut#count = makeFreeOIModuleMap(freeOIMod, modulesMut#count, currentGB)
+    else ddMut#count = makeFreeOIModuleMap(modulesMut#(count - 1), modulesMut#count, currentGB);
+    installSchreyerMonomialOrder ddMut#count;
+
+    if count < n then (
+        currentSymbolPlusOne := getSymbol concatenate(e, toString(count + 1));
+        modulesMut#(count + 1) = makeFreeOIModule(freeOIMod.polyOIAlg, currentSymbolPlusOne, {}, DegreeShifts => {}); -- Zero module
+        ddMut#(count + 1) = makeFreeOIModuleMap(modulesMut#count, modulesMut#(count + 1), {}) -- Zero map
     );
 
     -- Minimize the resolution

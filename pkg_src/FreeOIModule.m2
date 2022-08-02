@@ -217,3 +217,15 @@ freeOIModuleFromElement Vector := f -> (
     if not (class f).?freeOIMod then error "Element does not belong to a FreeOIModule";
     freeOIModuleFromElement f
 )
+
+-- PURPOSE: Change the FreeOIModule containing an element
+-- INPUT: '(F, v)', a FreeOIModule 'F' and a VectorInWidth 'v'
+-- OUTPUT: A VectorInWidth whose FreeOIModule is F
+changeFreeOIModule = method(TypicalValue => VectorInWidth)
+changeFreeOIModule(FreeOIModule, VectorInWidth) := (F, v) -> (
+    if isZero v then return 0_(getFreeModuleInWidth(F, widthOfElement v));
+
+    vTerms := getOITermsFromVector v;
+    newTerms := for term in vTerms list makeOITerm(term.ringElement, makeBasisIndex(F, term.basisIndex.oiMap, term.basisIndex.idx));
+    getVectorFromOITerms newTerms
+)
