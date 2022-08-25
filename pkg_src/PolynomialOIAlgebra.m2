@@ -1,39 +1,31 @@
--- Define the new type PolynomialOIAlgebra
--- COMMENT: Should be of the form {baseField => Ring, varRows => ZZ, varSym => Symbol, algebras => MutableHashTable, maps => MutableHashTable}
+-- Should be of the form {baseField => Ring, varRows => ZZ, varSym => Symbol, varOrder => Symbol, algebras => MutableHashTable, maps => MutableHashTable}
 PolynomialOIAlgebra = new Type of HashTable
 
-toString PolynomialOIAlgebra := P -> "base field => "|toString P.baseField|", variable rows => "|toString P.varRows|", variable symbol => "|toString P.varSym
+toString PolynomialOIAlgebra := P -> "("|toString P.baseField|", "|toString P.varRows|", "|toString P.varSym|", "|toString P.varOrder|")"
 
 net PolynomialOIAlgebra := P -> "Base field: "|net P.baseField ||
     "Number of variable rows: "|net P.varRows ||
-    "Variable symbol: "|net P.varSym
+    "Variable symbol: "|net P.varSym ||
+    "Variable order: "|net P.varOrder
 
--- PURPOSE: Make a new PolynomialOIAlgebra
--- INPUT: '(K, c, x)', a field of coefficients 'K', a positive integer 'c' of rows and a variable symbol 'x'
--- OUTPUT: A PolynomialOIAlgebra made from K, c, x
 makePolynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra)
-makePolynomialOIAlgebra(Ring, ZZ, Symbol) := (K, c, x) ->
+makePolynomialOIAlgebra(Ring, ZZ, Symbol, Symbol) := (K, c, x, v) ->
     new PolynomialOIAlgebra from {
         baseField => K,
-        varRows => c, 
-        varSym => x, 
-        algebras => new MutableHashTable, 
+        varRows => c,
+        varSym => x,
+        varOrder => v,
+        algebras => new MutableHashTable,
         maps => new MutableHashTable}
 
--- PURPOSE: Get the linearized index of a variable from its row-col position
--- INPUT: '(P, n, i, j)', a PolynomialOIAlgebra 'P', an integer 'n', a row 'i' and a column 'j'
--- OUTPUT: The index of x_(i,j) in the list of variables ordered so that in P_n we have x_(i,j) > x_(i',j') iff j > j' or j = j' and i > i'
-linearFromRowCol = method(TypicalValue => ZZ)
-linearFromRowCol(PolynomialOIAlgebra, ZZ, ZZ, ZZ) := (P, n, i, j) -> P.varRows * (n - j + 1) - i
+-- Get the linearized variable index
+-- Expects (PolynomialOIAlgebra, ZZ, ZZ, ZZ)
+linearFromRowCol := (P, n, i, j) -> P.varRows * (n - j + 1) - i
 
--- PURPOSE: Get the algebra from a PolynomialOIAlgebra in a specified width
--- INPUT: '(P, n)', a PolynomialOIAlgebra 'P' and a width 'n'
--- OUTPUT: P_n, the width n algebra of P
--- COMMENT: We use the "position down over term" monomial order and the standard ZZ-grading
 getAlgebraInWidth = method(TypicalValue => PolynomialRing)
 getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := (P, n) -> (
     -- Return the algebra if it already exists
-    if P.algebras#?n then return P.algebras#n;
+    if P.algebras#?n then ( use P.algebras#n; return P.algebras#n );
 
     -- Generate the variables
     local ret;
@@ -50,36 +42,28 @@ getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := (P, n) -> (
     ret
 )
 
--- PURPOSE: Subscript version of getAlgebraInWidth
-PolynomialOIAlgebra _ ZZ := (P, n) -> (
-    alg := getAlgebraInWidth(P, n);
-    use alg;
-    alg
-)
+-- Shorthand for getAlgebraInWidth
+PolynomialOIAlgebra _ ZZ := (P, n) -> getAlgebraInWidth(P, n)
 
--- PURPOSE: Get the algebra map induced by an OI-map
--- INPUT: '(P, f)', a PolynomialOIAlgebra 'P' and an OIMap 'f'
--- OUTPUT: The map P(f)
+-- Get the algebra map induced by an OI-map
 getInducedAlgebraMap = method(TypicalValue => RingMap)
 getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     -- Return the map if it already exists
-    if P.maps#?(f.Width, f.assignment) then return P.maps#(f.Width, f.assignment);
+    if P.maps#?f then return P.maps#f;
     
     -- Generate the assignment
-    m := #f.assignment;
-    n := f.Width;
-    src := getAlgebraInWidth(P, m);
-    targ := getAlgebraInWidth(P, n);
-    subs := new MutableList;
-    k := 0;
-    for j from 1 to m do
-        for i from 1 to P.varRows do ( subs#k = src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f.assignment#(j - 1))); k = k + 1 );
+    m := #f.img;
+    n := f.targWidth;
+    src := P_m;
+    targ := P_n;
+    subs := flatten for j from 1 to m list
+        for i from 1 to P.varRows list src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f j));
     
     -- Make the map
-    ret := map(targ, src, toList subs);
+    ret := map(targ, src, subs);
 
     -- Store the map
-    P.maps#(f.Width, f.assignment) = ret;
+    P.maps#f = ret;
 
     ret
 )

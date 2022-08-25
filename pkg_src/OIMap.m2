@@ -1,24 +1,22 @@
 -- Cache for storing OI-maps
 oiMapCache = new MutableHashTable
 
--- PURPOSE: Define the new type OIMap
--- COMMENT: Should be of the form {Width => ZZ, assignment => List}
+-- Should be of the form {targWidth => ZZ, img => List}
 OIMap = new Type of HashTable
 
-net OIMap := f -> "Width: "|net f.Width || "Assignment: "|net f.assignment
+net OIMap := f -> "Source: ["|net(#f.img)|"] Target: ["|net f.targWidth|"]" || "Image: "|net f.img
 
-source OIMap := f -> toList(1..#f.assignment)
-target OIMap := f -> toList(1..f.Width)
+source OIMap := f -> toList(1..#f.img)
+target OIMap := f -> toList(1..f.targWidth)
+image OIMap := f -> f.img
 
--- PURPOSE: Make a new OIMap
--- INPUT: '(n, L)', a width 'n' and a list 'L'
--- OUTPUT: An OIMap made from n and L
+-- Given an OI-map f, compute f(n)
+OIMap ZZ := (f, n) -> f.img#(n - 1)
+
 makeOIMap = method(TypicalValue => OIMap)
-makeOIMap(ZZ, List) := (n, L) -> new OIMap from {Width => n, assignment => L}
+makeOIMap(ZZ, List) := (n, L) -> new OIMap from {targWidth => n, img => L}
 
--- PURPOSE: Get all OI-maps between two widths
--- INPUT: '(m, n)', a width 'm' and a width 'n'
--- OUTPUT: A list of the OI-maps from m to n
+-- Get the OI-maps between two widths
 getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
     if n < m then return {};
@@ -26,10 +24,8 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
     -- Return the maps if they already exist
     if oiMapCache#?(m, n) then return oiMapCache#(m, n);
 
-    ret := new MutableList;
     sets := subsets(toList(1..n), m);
-    for i to #sets - 1 do ret#i = new OIMap from {Width => n, assignment => sets#i};
-    ret = toList ret;
+    ret := for i to #sets - 1 list new OIMap from {targWidth => n, img => sets#i};
 
     -- Store the maps
     oiMapCache#(m, n) = ret;
@@ -37,13 +33,13 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
     ret
 )
 
--- PURPOSE: Compose two OI-maps
--- INPUT: '(f, g)', an OIMap 'f' and an OIMap 'g'
--- OUTPUT: The OIMap f(g)
+-- Given OI-maps f and g, compute f(g)
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
-    if not #f.assignment == g.Width then error "Maps cannot be composed due to incompatible source and target";
-    L := new MutableList;
-    for i to #g.assignment - 1 do L#i = f.assignment#(g.assignment#i - 1);
-    new OIMap from {Width => f.Width, assignment => toList L}
+    if not source f === target g then error "Maps cannot be composed due to incompatible source and target";
+    L := for i in source g list f g i;
+    new OIMap from {targWidth => f.targWidth, img => L}
 )
+
+-- Shorthand composition
+OIMap OIMap := (f, g) -> composeOIMaps(f, g)
