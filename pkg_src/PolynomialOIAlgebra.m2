@@ -8,19 +8,38 @@ net PolynomialOIAlgebra := P -> "Base field: "|net P.baseField ||
     "Variable symbol: "|net P.varSym ||
     "Variable order: "|net P.varOrder
 
-makePolynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra)
-makePolynomialOIAlgebra(Ring, ZZ, Symbol, Symbol) := (K, c, x, v) ->
-    new PolynomialOIAlgebra from {
-        baseField => K,
-        varRows => c,
-        varSym => x,
-        varOrder => v,
-        algebras => new MutableHashTable,
-        maps => new MutableHashTable}
+makePolynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra, Options => {VariableOrder => RowUpColUp})
+makePolynomialOIAlgebra(Ring, ZZ, Symbol) := opts -> (K, c, x) -> (
+    if c < 1 then error("Expected at least 1 row of variables");
+    v := opts.VariableOrder;
+    if not member(v, {
+        ColUpRowUp, ColUpRowDown, ColDownRowUp, ColDownRowDown,
+        RowUpColUp, RowUpColDown, RowDownColUp, RowDownColDown
+    }) then error("Invalid variable order");
 
--- Get the linearized variable index
--- Expects (PolynomialOIAlgebra, ZZ, ZZ, ZZ)
-linearFromRowCol := (P, n, i, j) -> P.varRows * (n - j + 1) - i
+    new PolynomialOIAlgebra from {
+            baseField => K,
+            varRows => c,
+            varSym => x,
+            varOrder => v,
+            algebras => new MutableHashTable,
+            maps => new MutableHashTable}
+)
+
+-- Lookup table for linearFromRowCol
+orderTable := new HashTable from {
+    ColUpRowUp => (P, n, i, j) -> P.varRows * (n - j + 1) - i,
+    ColUpRowDown => (P, n, i, j) -> P.varRows * (n - j) + i - 1,
+    ColDownRowUp => (P, n, i, j) -> P.varRows * j - i,
+    ColDownRowDown => (P, n, i, j) -> P.varRows * (j - 1) + i - 1,
+    RowUpColUp => (P, n, i, j) -> n * (P.varRows - i + 1) - j,
+    RowUpColDown => (P, n, i, j) -> n * (P.varRows - i) + j - 1,
+    RowDownColUp => (P, n, i, j) -> n * i - j,
+    RowDownColDown => (P, n, i, j) -> n * (i - 1) + j - 1
+}
+
+-- Linearize the variables based on P.varOrder
+linearFromRowCol := (P, n, i, j) -> (orderTable#(P.varOrder))(P, n, i, j)
 
 getAlgebraInWidth = method(TypicalValue => PolynomialRing)
 getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := (P, n) -> (
@@ -32,7 +51,7 @@ getAlgebraInWidth(PolynomialOIAlgebra, ZZ) := (P, n) -> (
     variables := new MutableList;
     for j from 1 to n do
         for i from 1 to P.varRows do variables#(linearFromRowCol(P, n, i, j)) = P.varSym_(i, j);
-    
+
     -- Make the algebra
     ret = P.baseField[variables, Degrees => {#variables:1}, MonomialOrder => {Position => Down, Lex}];
 
@@ -50,7 +69,7 @@ getInducedAlgebraMap = method(TypicalValue => RingMap)
 getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     -- Return the map if it already exists
     if P.maps#?f then return P.maps#f;
-    
+
     -- Generate the assignment
     m := #f.img;
     n := f.targWidth;
@@ -58,7 +77,7 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     targ := P_n;
     subs := flatten for j from 1 to m list
         for i from 1 to P.varRows list src_(linearFromRowCol(P, m, i, j)) => targ_(linearFromRowCol(P, n, i, f j));
-    
+
     -- Make the map
     ret := map(targ, src, subs);
 

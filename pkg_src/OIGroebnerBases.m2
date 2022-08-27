@@ -56,5 +56,5 @@ end
 
 -- Scratch work
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 3, x, BLAH)
+P = makePolynomialOIAlgebra(QQ, 3, x)
 f = getInducedAlgebraMap(P, makeOIMap(5, {2,3,5}))

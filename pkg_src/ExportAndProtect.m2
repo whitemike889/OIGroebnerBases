@@ -3,9 +3,15 @@ export {
     "OIMap",
     "PolynomialOIAlgebra",
 
+    -- Keys
+    "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
+
     -- Methods
     "makeOIMap", "getOIMaps", "composeOIMaps",
-    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap"
+    "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap",
+
+    -- Options
+    "VariableOrder"
 }
 
 scan({

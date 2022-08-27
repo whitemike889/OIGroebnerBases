@@ -20,7 +20,7 @@ makeOIMap(ZZ, List) := (n, L) -> new OIMap from {targWidth => n, img => L}
 getOIMaps = method(TypicalValue => List)
 getOIMaps(ZZ, ZZ) := (m, n) -> (
     if n < m then return {};
-    
+
     -- Return the maps if they already exist
     if oiMapCache#?(m, n) then return oiMapCache#(m, n);
 
