@@ -2,6 +2,7 @@ export {
     -- Types
     "OIMap",
     "PolynomialOIAlgebra",
+    "FreeOIModule", "ModuleInWidth", "VectorInWidth",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -9,13 +10,20 @@ export {
     -- Methods
     "makeOIMap", "getOIMaps", "composeOIMaps",
     "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap",
+    "getGenWidths", "getDegShifts", "makeFreeOIModule", "getMonomialOrder", "isZero", "getFreeModuleInWidth", "widthOfElement", "freeOIModuleFromElement", "installBasisElements",
 
     -- Options
-    "VariableOrder"
+    "VariableOrder",
+    "DegreeShifts"
 }
 
 scan({
     -- Keys
     targWidth, img,
-    baseField, varRows, varSym, varOrder, algebras, maps
+    baseField, varRows, varSym, varOrder, algebras, maps,
+    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width,
+    freeOIMod, ringElement, oiMap, idx, ringElement, basisIndex, basisElements,
+
+    -- Options
+    CombineLikeTerms
 }, protect)

@@ -34,6 +34,10 @@ load "OIMap.m2"
 
 load "PolynomialOIAlgebra.m2"
 
+load "FreeOIModule.m2"
+
+load "Terms.m2"
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- DOCUMENTATION ---------------------------------------------------------------
@@ -56,5 +60,6 @@ end
 
 -- Scratch work
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 3, x)
-f = getInducedAlgebraMap(P, makeOIMap(5, {2,3,5}))
+P = makePolynomialOIAlgebra(QQ, 1, x)
+F = makeFreeOIModule(P, e, {1})
+installBasisElements(F, 2)

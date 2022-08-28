@@ -26,6 +26,7 @@ export {
     -- Types
     "OIMap",
     "PolynomialOIAlgebra",
+    "FreeOIModule", "ModuleInWidth", "VectorInWidth",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -33,15 +34,22 @@ export {
     -- Methods
     "makeOIMap", "getOIMaps", "composeOIMaps",
     "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap",
+    "getGenWidths", "getDegShifts", "makeFreeOIModule", "getMonomialOrder", "isZero", "getFreeModuleInWidth", "widthOfElement", "freeOIModuleFromElement", "installBasisElements",
 
     -- Options
-    "VariableOrder"
+    "VariableOrder",
+    "DegreeShifts"
 }
 
 scan({
     -- Keys
     targWidth, img,
-    baseField, varRows, varSym, varOrder, algebras, maps
+    baseField, varRows, varSym, varOrder, algebras, maps,
+    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width,
+    freeOIMod, ringElement, oiMap, idx, ringElement, basisIndex, basisElements,
+
+    -- Options
+    CombineLikeTerms
 }, protect)
 
 --------------------------------------------------------------------------------
@@ -185,6 +193,266 @@ getInducedAlgebraMap(PolynomialOIAlgebra, OIMap) := (P, f) -> (
     ret
 )
 
+-- Should be of the form {polyOIAlg => PolynomialOIAlgebra, basisSym => Symbol, genWidths => List, degShifts => List, monOrder => Thing, modules => MutableHashTable, maps => MutableHashTable}
+FreeOIModule = new Type of HashTable
+
+toString FreeOIModule := F -> "("|toString F.basisSym|", "|toString F.genWidths|", "|toString F.degShifts|")"
+
+net FreeOIModule := F -> (
+    local monOrderNet;
+    if F.monOrder === Lex then monOrderNet = net Lex
+    else if instance(F.monOrder, List) then monOrderNet = "Schreyer order induced by "|net F.monOrder;
+
+    "Polynomial OI-algebra: "|toString F.polyOIAlg ||
+    "Basis symbol: "|net F.basisSym ||
+    "Generator widths: "|net F.genWidths ||
+    "Degree shifts: "|net F.degShifts ||
+    "Monomial order: "|monOrderNet
+)
+
+getGenWidths = method(TypicalValue => List)
+getGenWidths FreeOIModule := F -> F.genWidths
+
+getDegShifts = method(TypicalValue => List)
+getDegShifts FreeOIModule := F -> F.degShifts
+
+makeFreeOIModule = method(TypicalValue => FreeOIModule, Options => {DegreeShifts => null, MonomialOrder => Lex})
+makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
+    local shifts;
+    if opts.DegreeShifts === null then shifts = toList(#W : 0)
+    else if instance(opts.DegreeShifts, List) then shifts = opts.DegreeShifts
+    else error("Invalid DegreeShifts option");
+
+    -- TODO: VALIDATE MONOMIAL ORDER
+
+    new FreeOIModule from {
+        polyOIAlg => P,
+        basisSym => e,
+        genWidths => W,
+        degShifts => shifts,
+        monOrder => opts.MonomialOrder,
+        modules => new MutableHashTable,
+        maps => new MutableHashTable}
+)
+
+getMonomialOrder = method()
+getMonomialOrder FreeOIModule := F -> F.monOrder
+
+-- Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
+-- Note: the order of basisElements matters, i.e. basisElements#i should correspond to M_i
+ModuleInWidth = new Type of Module
+
+net ModuleInWidth := M -> (
+    rawMod := new Module from M;
+    net rawMod | " in width " | net rawMod.Width
+)
+
+-- Each element 'f' in a ModuleInWidth 'M' should have type VectorInWidth with class f === M
+VectorInWidth = new Type of Vector
+
+isZero = method(TypicalValue => Boolean)
+isZero VectorInWidth := f -> f === 0_(class f)
+isZero FreeOIModule := F -> #F.genWidths === 0
+
+net VectorInWidth := f -> (
+    if isZero f then return net 0;
+    oiTerms := getOITermsFromVector(f, CombineLikeTerms => true);
+    if #oiTerms == 1 then return net oiTerms#0;
+    
+    str := "";
+    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + "; -- TODO: Make negatives look better
+    str = str|net oiTerms#-1;
+    str
+)
+
+getFreeModuleInWidth = method(TypicalValue => ModuleInWidth)
+getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
+    -- Return the module if it already exists
+    if F.modules#?n then ( use ring F.modules#n; return F.modules#n );
+
+    -- Generate the degrees
+    alg := getAlgebraInWidth(F.polyOIAlg, n);
+    degList := for i to #F.genWidths - 1 list binomial(n, F.genWidths#i) : F.degShifts#i;
+
+    -- Make the module
+    retHash := new MutableHashTable from alg^degList;
+    retHash.Width = n;
+    retHash.freeOIMod = F;
+    
+    -- Generate the basis elements
+    retHash.basisElements = flatten for i to #F.genWidths - 1 list
+        for oiMap in getOIMaps(F.genWidths#i, n) list makeBasisElement makeBasisIndex(F, oiMap, i + 1);
+
+    ret := new ModuleInWidth of VectorInWidth from retHash;
+
+    -- Store the module
+    F.modules#n = ret;
+
+    ret
+)
+
+-- Shorthand for getFreeModuleInWidth
+FreeOIModule _ ZZ := (F, n) -> getFreeModuleInWidth(F, n)
+
+widthOfElement = method(TypicalValue => ZZ)
+widthOfElement VectorInWidth := f -> (class f).Width
+
+freeOIModuleFromElement = method(TypicalValue => FreeOIModule)
+freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
+
+installBasisElements = method()
+installBasisElements(FreeOIModule, ZZ) := (F, n) -> (
+    fmod := getFreeModuleInWidth(F, n);
+    for i to #F.genWidths - 1 do
+        for oiMap in getOIMaps(F.genWidths#i, n) do (
+            b := makeBasisElement makeBasisIndex(F, oiMap, i + 1);
+            pos := position(fmod.basisElements, elt -> elt === b);
+
+            if pos === null then error("The basis element "|net b|" does not exist in "|net fmod);
+            F.basisSym_(oiMap.targWidth, oiMap.img, i + 1) <- fmod_pos
+        )
+)
+
+-- Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, idx => ZZ}
+BasisIndex = new Type of HashTable
+
+makeBasisIndex = method(TypicalValue => BasisIndex)
+makeBasisIndex(FreeOIModule, OIMap, ZZ) := (F, f, i) -> new BasisIndex from {freeOIMod => F, oiMap => f, idx => i}
+
+-- Should be of the form {ringElement => RingElement, basisIndex => BasisIndex}
+OITerm = new Type of HashTable
+
+makeOITerm = method(TypicalValue => OITerm)
+makeOITerm(RingElement, BasisIndex) := (elt, b) -> new OITerm from {ringElement => elt, basisIndex => b}
+
+net OITerm := f -> (
+    local ringElementNet;
+    if #terms f.ringElement == 1 or #terms f.ringElement == 0 then ringElementNet = net f.ringElement
+    else ringElementNet = "("|net f.ringElement|")";
+    ringElementNet | net f.basisIndex.freeOIMod.basisSym_(toString f.basisIndex.oiMap.targWidth, toString f.basisIndex.oiMap.img, f.basisIndex.idx)
+)
+
+isZero OITerm := f -> f.ringElement === 0_(class f.ringElement)
+isZero RingElement := f -> f === 0_(class f)
+
+-- Comparison method for OITerm
+OITerm ? OITerm := (f, g) -> (
+    if f === g then return symbol ==;
+
+    eltf := f.ringElement; eltg := g.ringElement;
+    bf := f.basisIndex; bg := g.basisIndex;
+    oiMapf := bf.oiMap; oiMapg := bg.oiMap;
+    idxf := bf.idx; idxg := bg.idx;
+
+    if not bf.freeOIMod === bg.freeOIMod then return incomparable;
+    freeOIMod := bf.freeOIMod;
+
+    monOrder := getMonomialOrder freeOIMod;
+    if monOrder === Lex then ( -- LEX ORDER
+        if not idxf === idxg then if idxf < idxg then return symbol > else return symbol <;
+        if not oiMapf.targWidth === oiMapg.targWidth then return oiMapf.targWidth ? oiMapg.targWidth;
+        if not oiMapf.img === oiMapg.img then return oiMapf.img ? oiMapg.img;
+
+        use class eltf; -- Note: since oiMapf.targWidth = oiMapg.targWidth we have class eltf === class eltg
+        return eltf ? eltg
+    )
+    else if instance(monOrder, List) then ( -- SCHREYER ORDER
+        -- TODO: Implement this
+    )
+    else error "Monomial order not supported"
+)
+
+-- Comparison method for VectorInWidth
+VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
+
+makeBasisElement = method(TypicalValue => OITerm)
+makeBasisElement BasisIndex := b -> (
+    one := 1_(getAlgebraInWidth(b.freeOIMod.polyOIAlg, b.oiMap.targWidth));
+    new OITerm from {ringElement => one, basisIndex => b}
+)
+
+getOITermsFromVector = method(TypicalValue => List, Options => {CombineLikeTerms => false})
+getOITermsFromVector VectorInWidth := opts -> f -> (
+    if isZero f then error("getOITermsFromVector expects a nonzero input");
+    freeMod := class f;
+    entryList := entries f;
+
+    if opts.CombineLikeTerms then reverse sort for i to #entryList - 1 list (
+        if isZero entryList#i then continue;
+        makeOITerm(entryList#i, (freeMod.basisElements#i).basisIndex)
+    ) else reverse sort flatten for i to #entryList - 1 list (
+        if isZero entryList#i then continue;
+        for term in terms entryList#i list makeOITerm(term, (freeMod.basisElements#i).basisIndex)
+    )
+)
+
+getVectorFromOITerms = method(TypicalValue => VectorInWidth)
+getVectorFromOITerms List := L -> (
+    if #L == 0 then error("getVectorFromOITerms expects a nonempty input");
+    Width := (L#0).basisIndex.oiMap.targWidth;
+    freeOIMod := (L#0).basisIndex.freeOIMod;
+    freeMod := getFreeModuleInWidth(freeOIMod, Width);
+    vect := 0_freeMod;
+
+    for oiTerm in L do (
+        ringElement := oiTerm.ringElement;
+        basisElement := makeBasisElement oiTerm.basisIndex;
+        pos := position(freeMod.basisElements, elt -> elt === basisElement);
+        vect = vect + ringElement * freeMod_pos
+    );
+    
+    vect
+)
+
+leadOITerm = method(TypicalValue => OITerm)
+leadOITerm VectorInWidth := f -> (
+    if isZero f then return null;
+    oiTerms := getOITermsFromVector f;
+    oiTerms#0
+)
+
+leadTerm VectorInWidth := f -> (
+    if isZero f then return null;
+    loitf := leadOITerm f;
+    getVectorFromOITerms {loitf}
+)
+
+leadCoefficient VectorInWidth := f -> (
+    if isZero f then return null;
+    loitf := leadOITerm f;
+    leadCoefficient loitf.ringElement
+)
+
+leadMonomial VectorInWidth := f -> (
+    if isZero f then return null;
+    loitf := leadOITerm f;
+    getVectorFromOITerms {makeOITerm(loitf.ringElement // leadCoefficient loitf.ringElement, loitf.basisIndex)}
+)
+
+-- Scale a VectorInWidth by a number
+VectorInWidth // Number := (f, r) -> (
+    if isZero f then return f;
+    freeOIMod := freeOIModuleFromElement f;
+    oiTerms := getOITermsFromVector f;
+    getVectorFromOITerms for oiTerm in oiTerms list makeOITerm(oiTerm.ringElement // r_(class oiTerm.ringElement), oiTerm.basisIndex)
+)
+
+--oiTermDiv = method(TypicalValue => HashTable)
+-- TODO: Implement this
+
+lcm(OITerm, OITerm) := (f, g) -> (
+    if not f.basisIndex === g.basisIndex then return makeOITerm(0_(class f.ringElement), f.basisIndex);
+
+    makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
+)
+
+lcm(VectorInWidth, VectorInWidth) := (f, g) -> getVectorFromOITerms {lcm(leadOITerm f, leadOITerm g)}
+
+terms VectorInWidth := f -> (
+    oiTerms := getOITermsFromVector f;
+    for oiTerm in oiTerms list getVectorFromOITerms {oiTerm}
+)
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- DOCUMENTATION ---------------------------------------------------------------
@@ -207,5 +475,6 @@ end
 
 -- Scratch work
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 3, x)
-f = getInducedAlgebraMap(P, makeOIMap(5, {2,3,5}))
+P = makePolynomialOIAlgebra(QQ, 1, x)
+F = makeFreeOIModule(P, e, {1})
+installBasisElements(F, 2)
