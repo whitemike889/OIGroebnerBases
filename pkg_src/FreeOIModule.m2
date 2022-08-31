@@ -26,7 +26,7 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     local shifts;
     if opts.DegreeShifts === null then shifts = toList(#W : 0)
     else if instance(opts.DegreeShifts, List) then shifts = opts.DegreeShifts
-    else error("Invalid DegreeShifts option");
+    else error "invalid DegreeShifts option";
 
     -- TODO: VALIDATE MONOMIAL ORDER
 
@@ -43,8 +43,7 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 getMonomialOrder = method()
 getMonomialOrder FreeOIModule := F -> F.monOrder
 
--- Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
--- Note: the order of basisElements matters, i.e. basisElements#i should correspond to M_i
+-- Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ, basisElements => List, and basisElementPositions => HashTable
 ModuleInWidth = new Type of Module
 
 net ModuleInWidth := M -> (
@@ -85,8 +84,17 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
     retHash.freeOIMod = F;
     
     -- Generate the basis elements
+    k := 0;
+    mutPos := new MutableHashTable;
     retHash.basisElements = flatten for i to #F.genWidths - 1 list
-        for oiMap in getOIMaps(F.genWidths#i, n) list makeBasisElement makeBasisIndex(F, oiMap, i + 1);
+        for oiMap in getOIMaps(F.genWidths#i, n) list (
+            b := makeBasisElement makeBasisIndex(F, oiMap, i + 1);
+            mutPos#b = k;
+            k = k + 1;
+            b
+        );
+    
+    retHash.basisElementPositions = new HashTable from mutPos;
 
     ret := new ModuleInWidth of VectorInWidth from retHash;
 
@@ -107,13 +115,10 @@ freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
 
 installBasisElements = method()
 installBasisElements(FreeOIModule, ZZ) := (F, n) -> (
-    fmod := getFreeModuleInWidth(F, n);
+    freeMod := getFreeModuleInWidth(F, n);
     for i to #F.genWidths - 1 do
         for oiMap in getOIMaps(F.genWidths#i, n) do (
             b := makeBasisElement makeBasisIndex(F, oiMap, i + 1);
-            pos := position(fmod.basisElements, elt -> elt === b);
-
-            if pos === null then error("The basis element "|net b|" does not exist in "|net fmod);
-            F.basisSym_(oiMap.targWidth, oiMap.img, i + 1) <- fmod_pos
+            F.basisSym_(oiMap.targWidth, oiMap.img, i + 1) <- freeMod_(freeMod.basisElementPositions#b)
         )
 )

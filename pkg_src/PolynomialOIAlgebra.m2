@@ -10,12 +10,12 @@ net PolynomialOIAlgebra := P -> "Base field: "|net P.baseField ||
 
 makePolynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra, Options => {VariableOrder => RowUpColUp})
 makePolynomialOIAlgebra(Ring, ZZ, Symbol) := opts -> (K, c, x) -> (
-    if c < 1 then error("Expected at least 1 row of variables");
+    if c < 1 then error "expected at least one row of variables";
     v := opts.VariableOrder;
     if not member(v, {
         ColUpRowUp, ColUpRowDown, ColDownRowUp, ColDownRowDown,
         RowUpColUp, RowUpColDown, RowDownColUp, RowDownColDown
-    }) then error("Invalid variable order");
+    }) then error "invalid variable order";
 
     new PolynomialOIAlgebra from {
             baseField => K,

@@ -44,7 +44,7 @@ OITerm ? OITerm := (f, g) -> (
     else if instance(monOrder, List) then ( -- SCHREYER ORDER
         -- TODO: Implement this
     )
-    else error "Monomial order not supported"
+    else error "monomial order not supported"
 )
 
 -- Comparison method for VectorInWidth
@@ -58,7 +58,7 @@ makeBasisElement BasisIndex := b -> (
 
 getOITermsFromVector = method(TypicalValue => List, Options => {CombineLikeTerms => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
-    if isZero f then error("getOITermsFromVector expects a nonzero input");
+    if isZero f then error "the zero element has no OI-terms";
     freeMod := class f;
     entryList := entries f;
 
@@ -82,8 +82,7 @@ getVectorFromOITerms List := L -> (
     for oiTerm in L do (
         ringElement := oiTerm.ringElement;
         basisElement := makeBasisElement oiTerm.basisIndex;
-        pos := position(freeMod.basisElements, elt -> elt === basisElement);
-        vect = vect + ringElement * freeMod_pos
+        vect = vect + ringElement * freeMod_(freeMod.basisElementPositions#basisElement)
     );
     
     vect
@@ -91,25 +90,25 @@ getVectorFromOITerms List := L -> (
 
 leadOITerm = method(TypicalValue => OITerm)
 leadOITerm VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then error "the zero element has no lead OI-term";
     oiTerms := getOITermsFromVector f;
     oiTerms#0
 )
 
 leadTerm VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then return f;
     loitf := leadOITerm f;
     getVectorFromOITerms {loitf}
 )
 
 leadCoefficient VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then return 0_((freeOIModuleFromElement f).polyOIAlg.baseField);
     loitf := leadOITerm f;
     leadCoefficient loitf.ringElement
 )
 
 leadMonomial VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then error "the zero element has no lead monomial";
     loitf := leadOITerm f;
     getVectorFromOITerms {makeOITerm(loitf.ringElement // leadCoefficient loitf.ringElement, loitf.basisIndex)}
 )
@@ -117,13 +116,35 @@ leadMonomial VectorInWidth := f -> (
 -- Scale a VectorInWidth by a number
 VectorInWidth // Number := (f, r) -> (
     if isZero f then return f;
-    freeOIMod := freeOIModuleFromElement f;
     oiTerms := getOITermsFromVector f;
     getVectorFromOITerms for oiTerm in oiTerms list makeOITerm(oiTerm.ringElement // r_(class oiTerm.ringElement), oiTerm.basisIndex)
 )
 
---oiTermDiv = method(TypicalValue => HashTable)
--- TODO: Implement this
+-- Tries to divide f by g
+-- Returns a HashTable of the form {quo => RingElement, oiMap => OIMap}
+-- Returns {quo => 0, oiMap => null} if division does not occur
+oiTermDiv = method(TypicalValue => HashTable)
+oiTermDiv(OITerm, OITerm) := (f, g) -> (
+    freeOIModf := f.basisIndex.freeOIMod;
+    freeOIModg := g.basisIndex.freeOIMod;
+
+    retZero := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
+    if not freeOIModf === freeOIModg then return retZero;
+
+    Widthf := f.basisIndex.targWidth;
+    Widthg := g.basisIndex.targWidth;
+    if Widthf < Widthg then return retZero;
+    if Widthf === Widthg then (
+        if not f.basisIndex === g.basisIndex then return retZero;
+        if isZero(f.ringElement % g.ringElement) then return new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0} else return retZero
+    );
+
+    oiMaps := getOIMaps(Widthg, Widthf);
+
+    -- TODO: Finish this
+
+    retZero
+)
 
 lcm(OITerm, OITerm) := (f, g) -> (
     if not f.basisIndex === g.basisIndex then return makeOITerm(0_(class f.ringElement), f.basisIndex);
@@ -131,9 +152,10 @@ lcm(OITerm, OITerm) := (f, g) -> (
     makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
 )
 
-lcm(VectorInWidth, VectorInWidth) := (f, g) -> getVectorFromOITerms {lcm(leadOITerm f, leadOITerm g)}
+lcm(VectorInWidth, VectorInWidth) := (f, g) -> if isZero f then f else if isZero g then g else getVectorFromOITerms {lcm(leadOITerm f, leadOITerm g)}
 
 terms VectorInWidth := f -> (
+    if isZero f then return {};
     oiTerms := getOITermsFromVector f;
     for oiTerm in oiTerms list getVectorFromOITerms {oiTerm}
 )

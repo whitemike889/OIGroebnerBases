@@ -36,7 +36,7 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
 -- Given OI-maps f and g, compute f(g)
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
-    if not source f === target g then error "Maps cannot be composed due to incompatible source and target";
+    if not source f === target g then error "maps cannot be composed due to incompatible source and target";
     L := for i in source g list f g i;
     new OIMap from {targWidth => f.targWidth, img => L}
 )

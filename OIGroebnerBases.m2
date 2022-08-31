@@ -27,6 +27,7 @@ export {
     "OIMap",
     "PolynomialOIAlgebra",
     "FreeOIModule", "ModuleInWidth", "VectorInWidth",
+    "InducedModuleMap",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -35,6 +36,7 @@ export {
     "makeOIMap", "getOIMaps", "composeOIMaps",
     "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap",
     "getGenWidths", "getDegShifts", "makeFreeOIModule", "getMonomialOrder", "isZero", "getFreeModuleInWidth", "widthOfElement", "freeOIModuleFromElement", "installBasisElements",
+    "getInducedModuleMap",
 
     -- Options
     "VariableOrder",
@@ -45,8 +47,8 @@ scan({
     -- Keys
     targWidth, img,
     baseField, varRows, varSym, varOrder, algebras, maps,
-    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width,
-    freeOIMod, ringElement, oiMap, idx, ringElement, basisIndex, basisElements,
+    polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width, basisElements, basisElementPositions,
+    freeOIMod, ringElement, oiMap, idx, basisIndex, quo,
 
     -- Options
     CombineLikeTerms
@@ -96,7 +98,7 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
 -- Given OI-maps f and g, compute f(g)
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
-    if not source f === target g then error "Maps cannot be composed due to incompatible source and target";
+    if not source f === target g then error "maps cannot be composed due to incompatible source and target";
     L := for i in source g list f g i;
     new OIMap from {targWidth => f.targWidth, img => L}
 )
@@ -116,12 +118,12 @@ net PolynomialOIAlgebra := P -> "Base field: "|net P.baseField ||
 
 makePolynomialOIAlgebra = method(TypicalValue => PolynomialOIAlgebra, Options => {VariableOrder => RowUpColUp})
 makePolynomialOIAlgebra(Ring, ZZ, Symbol) := opts -> (K, c, x) -> (
-    if c < 1 then error("Expected at least 1 row of variables");
+    if c < 1 then error "expected at least one row of variables";
     v := opts.VariableOrder;
     if not member(v, {
         ColUpRowUp, ColUpRowDown, ColDownRowUp, ColDownRowDown,
         RowUpColUp, RowUpColDown, RowDownColUp, RowDownColDown
-    }) then error("Invalid variable order");
+    }) then error "invalid variable order";
 
     new PolynomialOIAlgebra from {
             baseField => K,
@@ -221,7 +223,7 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     local shifts;
     if opts.DegreeShifts === null then shifts = toList(#W : 0)
     else if instance(opts.DegreeShifts, List) then shifts = opts.DegreeShifts
-    else error("Invalid DegreeShifts option");
+    else error "invalid DegreeShifts option";
 
     -- TODO: VALIDATE MONOMIAL ORDER
 
@@ -238,8 +240,7 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
 getMonomialOrder = method()
 getMonomialOrder FreeOIModule := F -> F.monOrder
 
--- Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ and basisElements => List
--- Note: the order of basisElements matters, i.e. basisElements#i should correspond to M_i
+-- Should also contain the key-value pairs freeOIMod => FreeOIModule, Width => ZZ, basisElements => List, and basisElementPositions => HashTable
 ModuleInWidth = new Type of Module
 
 net ModuleInWidth := M -> (
@@ -280,8 +281,17 @@ getFreeModuleInWidth(FreeOIModule, ZZ) := (F, n) -> (
     retHash.freeOIMod = F;
     
     -- Generate the basis elements
+    k := 0;
+    mutPos := new MutableHashTable;
     retHash.basisElements = flatten for i to #F.genWidths - 1 list
-        for oiMap in getOIMaps(F.genWidths#i, n) list makeBasisElement makeBasisIndex(F, oiMap, i + 1);
+        for oiMap in getOIMaps(F.genWidths#i, n) list (
+            b := makeBasisElement makeBasisIndex(F, oiMap, i + 1);
+            mutPos#b = k;
+            k = k + 1;
+            b
+        );
+    
+    retHash.basisElementPositions = new HashTable from mutPos;
 
     ret := new ModuleInWidth of VectorInWidth from retHash;
 
@@ -302,14 +312,11 @@ freeOIModuleFromElement VectorInWidth := f -> (class f).freeOIMod
 
 installBasisElements = method()
 installBasisElements(FreeOIModule, ZZ) := (F, n) -> (
-    fmod := getFreeModuleInWidth(F, n);
+    freeMod := getFreeModuleInWidth(F, n);
     for i to #F.genWidths - 1 do
         for oiMap in getOIMaps(F.genWidths#i, n) do (
             b := makeBasisElement makeBasisIndex(F, oiMap, i + 1);
-            pos := position(fmod.basisElements, elt -> elt === b);
-
-            if pos === null then error("The basis element "|net b|" does not exist in "|net fmod);
-            F.basisSym_(oiMap.targWidth, oiMap.img, i + 1) <- fmod_pos
+            F.basisSym_(oiMap.targWidth, oiMap.img, i + 1) <- freeMod_(freeMod.basisElementPositions#b)
         )
 )
 
@@ -359,7 +366,7 @@ OITerm ? OITerm := (f, g) -> (
     else if instance(monOrder, List) then ( -- SCHREYER ORDER
         -- TODO: Implement this
     )
-    else error "Monomial order not supported"
+    else error "monomial order not supported"
 )
 
 -- Comparison method for VectorInWidth
@@ -373,7 +380,7 @@ makeBasisElement BasisIndex := b -> (
 
 getOITermsFromVector = method(TypicalValue => List, Options => {CombineLikeTerms => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
-    if isZero f then error("getOITermsFromVector expects a nonzero input");
+    if isZero f then error "the zero element has no OI-terms";
     freeMod := class f;
     entryList := entries f;
 
@@ -397,8 +404,7 @@ getVectorFromOITerms List := L -> (
     for oiTerm in L do (
         ringElement := oiTerm.ringElement;
         basisElement := makeBasisElement oiTerm.basisIndex;
-        pos := position(freeMod.basisElements, elt -> elt === basisElement);
-        vect = vect + ringElement * freeMod_pos
+        vect = vect + ringElement * freeMod_(freeMod.basisElementPositions#basisElement)
     );
     
     vect
@@ -406,25 +412,25 @@ getVectorFromOITerms List := L -> (
 
 leadOITerm = method(TypicalValue => OITerm)
 leadOITerm VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then error "the zero element has no lead OI-term";
     oiTerms := getOITermsFromVector f;
     oiTerms#0
 )
 
 leadTerm VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then return f;
     loitf := leadOITerm f;
     getVectorFromOITerms {loitf}
 )
 
 leadCoefficient VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then return 0_((freeOIModuleFromElement f).polyOIAlg.baseField);
     loitf := leadOITerm f;
     leadCoefficient loitf.ringElement
 )
 
 leadMonomial VectorInWidth := f -> (
-    if isZero f then return null;
+    if isZero f then error "the zero element has no lead monomial";
     loitf := leadOITerm f;
     getVectorFromOITerms {makeOITerm(loitf.ringElement // leadCoefficient loitf.ringElement, loitf.basisIndex)}
 )
@@ -432,13 +438,35 @@ leadMonomial VectorInWidth := f -> (
 -- Scale a VectorInWidth by a number
 VectorInWidth // Number := (f, r) -> (
     if isZero f then return f;
-    freeOIMod := freeOIModuleFromElement f;
     oiTerms := getOITermsFromVector f;
     getVectorFromOITerms for oiTerm in oiTerms list makeOITerm(oiTerm.ringElement // r_(class oiTerm.ringElement), oiTerm.basisIndex)
 )
 
---oiTermDiv = method(TypicalValue => HashTable)
--- TODO: Implement this
+-- Tries to divide f by g
+-- Returns a HashTable of the form {quo => RingElement, oiMap => OIMap}
+-- Returns {quo => 0, oiMap => null} if division does not occur
+oiTermDiv = method(TypicalValue => HashTable)
+oiTermDiv(OITerm, OITerm) := (f, g) -> (
+    freeOIModf := f.basisIndex.freeOIMod;
+    freeOIModg := g.basisIndex.freeOIMod;
+
+    retZero := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
+    if not freeOIModf === freeOIModg then return retZero;
+
+    Widthf := f.basisIndex.targWidth;
+    Widthg := g.basisIndex.targWidth;
+    if Widthf < Widthg then return retZero;
+    if Widthf === Widthg then (
+        if not f.basisIndex === g.basisIndex then return retZero;
+        if isZero(f.ringElement % g.ringElement) then return new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0} else return retZero
+    );
+
+    oiMaps := getOIMaps(Widthg, Widthf);
+
+    -- TODO: Finish this
+
+    retZero
+)
 
 lcm(OITerm, OITerm) := (f, g) -> (
     if not f.basisIndex === g.basisIndex then return makeOITerm(0_(class f.ringElement), f.basisIndex);
@@ -446,11 +474,71 @@ lcm(OITerm, OITerm) := (f, g) -> (
     makeOITerm(lcm(f.ringElement // leadCoefficient f.ringElement, g.ringElement // leadCoefficient g.ringElement), f.basisIndex)
 )
 
-lcm(VectorInWidth, VectorInWidth) := (f, g) -> getVectorFromOITerms {lcm(leadOITerm f, leadOITerm g)}
+lcm(VectorInWidth, VectorInWidth) := (f, g) -> if isZero f then f else if isZero g then g else getVectorFromOITerms {lcm(leadOITerm f, leadOITerm g)}
 
 terms VectorInWidth := f -> (
+    if isZero f then return {};
     oiTerms := getOITermsFromVector f;
     for oiTerm in oiTerms list getVectorFromOITerms {oiTerm}
+)
+
+-- Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, img => HashTable}
+InducedModuleMap = new Type of HashTable
+
+-- TODO: Add net InducedModuleMap
+
+source InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, #f.oiMap.img)
+target InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, f.oiMap.targWidth)
+
+getInducedModuleMap = method(TypicalValue => InducedModuleMap)
+getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
+    -- Return the map if it already exists
+    if F.maps#?f then return F.maps#f;
+
+    -- Generate the BasisIndex assignments
+    m := #f.img;
+    freeModm := getFreeModuleInWidth(F, m);
+    basisElementsm := freeModm.basisElements;
+    indexImages := new HashTable from for basisElementm in basisElementsm list basisElementm.basisIndex => makeBasisIndex(F, composeOIMaps(f, basisElementm.basisIndex.oiMap), basisElementm.basisIndex.idx);
+
+    -- Make the map
+    ret := new InducedModuleMap from {freeOIMod => F, oiMap => f, img => indexImages};
+
+    -- Store the map
+    F.maps#f = ret;
+
+    ret
+)
+
+-- Apply an InducedModuleMap to a List of OI-terms
+applyModuleMap := (f, oiTerms) -> (
+    if #oiTerms == 0 then error "cannot apply InducedModuleMap to an empty list";
+
+    -- Generate the new terms
+    algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
+    getVectorFromOITerms for i to #oiTerms - 1 list (
+        ringElement := (oiTerms#i).ringElement;
+        basisIndex := (oiTerms#i).basisIndex;
+        newRingElement := algMap ringElement;
+        newBasisIndex := f.img#basisIndex;
+        makeOITerm(newRingElement, newBasisIndex)
+    )
+)
+
+-- Juxtaposition method for InducedModuleMap and VectorInWidth
+InducedModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := f.freeOIMod;
+    freeOIModFromVector := freeOIModuleFromElement v;
+    if not freeOIMod === freeOIModFromVector then error "the specified element does not belong to the required FreeOIModule";
+    if not source f === class v then error "the specified element does not belong to the source of the map";
+
+    -- Handle the zero vector
+    if isZero v then (
+        targWidth := f.oiMap.targWidth;
+        return 0_(getFreeModuleInWidth(freeOIMod, targWidth))
+    );
+
+    applyModuleMap(f, getOITermsFromVector v)
 )
 
 --------------------------------------------------------------------------------
@@ -476,5 +564,5 @@ end
 -- Scratch work
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ, 1, x)
-F = makeFreeOIModule(P, e, {1})
+F = makeFreeOIModule(P, e, {1,2})
 installBasisElements(F, 2)

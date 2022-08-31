@@ -38,6 +38,8 @@ load "FreeOIModule.m2"
 
 load "Terms.m2"
 
+load "InducedModuleMap.m2"
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- DOCUMENTATION ---------------------------------------------------------------
@@ -61,5 +63,5 @@ end
 -- Scratch work
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ, 1, x)
-F = makeFreeOIModule(P, e, {1})
+F = makeFreeOIModule(P, e, {1,2})
 installBasisElements(F, 2)
