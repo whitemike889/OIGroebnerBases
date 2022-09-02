@@ -12,6 +12,7 @@ export {
     "makeOIMap", "getOIMaps", "composeOIMaps",
     "makePolynomialOIAlgebra", "getAlgebraInWidth", "getInducedAlgebraMap",
     "getGenWidths", "getDegShifts", "makeFreeOIModule", "getMonomialOrder", "isZero", "getFreeModuleInWidth", "widthOfElement", "freeOIModuleFromElement", "installBasisElements",
+    "makeMonic",
     "getInducedModuleMap",
 
     -- Options

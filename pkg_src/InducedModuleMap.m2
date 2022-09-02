@@ -1,7 +1,7 @@
 -- Should be of the form {freeOIMod => FreeOIModule, oiMap => OIMap, img => HashTable}
 InducedModuleMap = new Type of HashTable
 
--- TODO: Add net InducedModuleMap
+net InducedModuleMap := f -> "Module map from "|net getFreeModuleInWidth(f.freeOIMod, #f.oiMap.img)|" to "|net getFreeModuleInWidth(f.freeOIMod, f.oiMap.targWidth)|" induced by the OI-map: "|net f.oiMap
 
 source InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, #f.oiMap.img)
 target InducedModuleMap := f -> getFreeModuleInWidth(f.freeOIMod, f.oiMap.targWidth)
@@ -27,7 +27,8 @@ getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
 )
 
 -- Apply an InducedModuleMap to a List of OI-terms
-applyModuleMap := (f, oiTerms) -> (
+applyModuleMap = method(TypicalValue => OITerm)
+applyModuleMap(InducedModuleMap, List) := (f, oiTerms) -> (
     if #oiTerms == 0 then error "cannot apply InducedModuleMap to an empty list";
 
     -- Generate the new terms

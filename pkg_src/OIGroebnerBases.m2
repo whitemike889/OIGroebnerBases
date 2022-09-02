@@ -65,3 +65,5 @@ load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ, 1, x)
 F = makeFreeOIModule(P, e, {1,2})
 installBasisElements(F, 2)
+f = 3*x_(1,2)^2*x_(1,1)*e_(2,{2},1)+x_(1,1)*e_(2,{1},1)
+g = x_(1,1)*e_(2,{2},1)+e_(2,{1},1)
