@@ -28,7 +28,11 @@ makeFreeOIModule(PolynomialOIAlgebra, Symbol, List) := opts -> (P, e, W) -> (
     else if instance(opts.DegreeShifts, List) then shifts = opts.DegreeShifts
     else error "invalid DegreeShifts option";
 
-    -- TODO: VALIDATE MONOMIAL ORDER
+    -- Validate the monomial order
+    if not opts.MonomialOrder === Lex and not (
+        instance(opts.MonomialOrder, List) and 
+        W === apply(opts.MonomialOrder, widthOfElement) and 
+        #set apply(opts.MonomialOrder, freeOIModuleFromElement) == 1) then error "invalid monomial order";
 
     new FreeOIModule from {
         polyOIAlg => P,

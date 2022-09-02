@@ -31,7 +31,8 @@ OITerm ? OITerm := (f, g) -> (
     local ret;
 
     -- Generate the comparison
-    if f === g then ret = symbol == else (
+    if f === g or (isZero f and isZero g) then ret = symbol == 
+    else if isZero f then ret = symbol < else if isZero g then ret = symbol > else (
         eltf := f.ringElement; eltg := g.ringElement;
         bf := f.basisIndex; bg := g.basisIndex;
         oiMapf := bf.oiMap; oiMapg := bg.oiMap;
@@ -48,7 +49,17 @@ OITerm ? OITerm := (f, g) -> (
                 else ret = eltf ? eltg
             )
             else if instance(monOrder, List) then ( -- SCHREYER ORDER
-                -- TODO: Implement this
+                freeOIModMap := makeFreeOIModuleMap(freeOIModuleFromElement monOrder#0, freeOIMod, monOrder);
+                imgf := applyFreeOIModuleMap(freeOIModMap, {f});
+                imgg := applyFreeOIModuleMap(freeOIModMap, {g});
+                loimimf := makeMonic leadOITerm imgf;
+                loimimg := makeMonic leadOITerm imgg;
+
+                if not loimimf === loimimg then ret = loimimf ? loimimg
+                else if not idxf === idxg then ( if idxf < idxg then ret = symbol > else ret = symbol < )
+                else if not oiMapf.targWidth === oiMapg.targWidth then ret = oiMapf.targWidth ? oiMapg.targWidth
+                else if not oiMapf.img === oiMapg.img then ret = oiMapf.img ? oiMapg.img
+                else ret = symbol ==
             )
             else error "monomial order not supported"
         )
