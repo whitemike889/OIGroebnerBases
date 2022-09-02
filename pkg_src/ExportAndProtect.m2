@@ -4,6 +4,7 @@ export {
     "PolynomialOIAlgebra",
     "FreeOIModule", "ModuleInWidth", "VectorInWidth",
     "InducedModuleMap",
+    "FreeOIModuleMap",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -14,6 +15,7 @@ export {
     "getGenWidths", "getDegShifts", "makeFreeOIModule", "getMonomialOrder", "isZero", "getFreeModuleInWidth", "widthOfElement", "freeOIModuleFromElement", "installBasisElements",
     "makeMonic",
     "getInducedModuleMap",
+    "makeFreeOIModuleMap",
 
     -- Options
     "VariableOrder",
@@ -26,6 +28,7 @@ scan({
     baseField, varRows, varSym, varOrder, algebras, maps,
     polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width, basisElements, basisElementPositions,
     freeOIMod, ringElement, oiMap, idx, basisIndex, quo,
+    srcMod, targMod, genImages,
 
     -- Options
     CombineLikeTerms

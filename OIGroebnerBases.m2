@@ -28,6 +28,7 @@ export {
     "PolynomialOIAlgebra",
     "FreeOIModule", "ModuleInWidth", "VectorInWidth",
     "InducedModuleMap",
+    "FreeOIModuleMap",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -38,6 +39,7 @@ export {
     "getGenWidths", "getDegShifts", "makeFreeOIModule", "getMonomialOrder", "isZero", "getFreeModuleInWidth", "widthOfElement", "freeOIModuleFromElement", "installBasisElements",
     "makeMonic",
     "getInducedModuleMap",
+    "makeFreeOIModuleMap",
 
     -- Options
     "VariableOrder",
@@ -50,6 +52,7 @@ scan({
     baseField, varRows, varSym, varOrder, algebras, maps,
     polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width, basisElements, basisElementPositions,
     freeOIMod, ringElement, oiMap, idx, basisIndex, quo,
+    srcMod, targMod, genImages,
 
     -- Options
     CombineLikeTerms
@@ -544,28 +547,39 @@ getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
     ret
 )
 
+-- Cache for storing InducedModuleMap images
+modMapCache = new MutableHashTable
+
 -- Apply an InducedModuleMap to a List of OI-terms
-applyModuleMap = method(TypicalValue => OITerm)
+applyModuleMap = method(TypicalValue => VectorInWidth)
 applyModuleMap(InducedModuleMap, List) := (f, oiTerms) -> (
     if #oiTerms == 0 then error "cannot apply InducedModuleMap to an empty list";
 
+    -- Return the image if it already exists
+    if modMapCache#?(f, oiTerms) then return modMapCache#(f, oiTerms);
+
     -- Generate the new terms
     algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
-    getVectorFromOITerms for i to #oiTerms - 1 list (
-        ringElement := (oiTerms#i).ringElement;
-        basisIndex := (oiTerms#i).basisIndex;
+    ret := getVectorFromOITerms for oiTerm in oiTerms list (
+        ringElement := oiTerm.ringElement;
+        basisIndex := oiTerm.basisIndex;
         newRingElement := algMap ringElement;
         newBasisIndex := f.img#basisIndex;
         makeOITerm(newRingElement, newBasisIndex)
-    )
+    );
+
+    -- Store the image
+    modMapCache#(f, oiTerms) = ret;
+
+    ret
 )
 
 -- Juxtaposition method for InducedModuleMap and VectorInWidth
 InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := f.freeOIMod;
     freeOIModFromVector := freeOIModuleFromElement v;
-    if not freeOIMod === freeOIModFromVector then error "the specified element does not belong to the required FreeOIModule";
-    if not source f === class v then error "the specified element does not belong to the source of the map";
+    if not freeOIMod === freeOIModFromVector then error "element does not belong to the required FreeOIModule";
+    if not source f === class v then error "element does not belong to the source of the map";
 
     -- Handle the zero vector
     if isZero v then (
@@ -574,6 +588,87 @@ InducedModuleMap VectorInWidth := (f, v) -> (
     );
 
     applyModuleMap(f, getOITermsFromVector v)
+)
+
+-- Should be of the form {srcMod => FreeOIModule, targMod => FreeOIModule, genImages => List}
+FreeOIModuleMap = new Type of HashTable
+
+net FreeOIModuleMap := f -> "Source module: "|toString f.srcMod ||
+    "Target module: "|toString f.targMod ||
+    "Generator images: "|net f.genImages
+
+source FreeOIModuleMap := f -> f.srcMod
+target FreeOIModuleMap := f -> f.targMod
+
+makeFreeOIModuleMap = method(TypicalValue => FreeOIModuleMap)
+makeFreeOIModuleMap(FreeOIModule, FreeOIModule, List) := (G, F, L) -> new FreeOIModuleMap from {srcMod => F, targMod => G, genImages => L}
+
+isZero FreeOIModuleMap := f -> isZero f.srcMod or isZero f.targMod
+
+-- Cache for storing FreeOIModuleMap images
+freeOIModMapCache = new MutableHashTable
+
+-- Apply a FreeOIModuleMap to a List of OITerms
+applyFreeOIModuleMap = method(TypicalValue => VectorInWidth)
+applyFreeOIModuleMap(FreeOIModuleMap, List) := (f, oiTerms) -> (
+    if #oiTerms == 0 then error "cannot apply FreeOIModuleMap to an empty list";
+
+    -- Return the image if it already exists
+    if freeOIModMapCache#?(f, oiTerms) then return freeOIModMapCache#(f, oiTerms);
+
+    -- Handle the zero map case
+    if isZero f then (
+        targWidth := (oiTerms#0).basisIndex.oiMap.targWidth;
+        return 0_(getFreeModuleInWidth(f.targMod, targWidth))
+    );
+
+    -- Generate the new terms
+    newTerms := for oiTerm in oiTerms list (
+        ringElement := oiTerm.ringElement;
+        basisIndex := oiTerm.basisIndex;
+        oiMap := basisIndex.oiMap;
+        idx := basisIndex.idx;
+        modMap := getInducedModuleMap(f.targMod, oiMap);
+        ringElement * modMap f.genImages#(idx - 1) -- x*d_(pi,i) ---> x*F(pi)(b_i)
+    );
+
+    -- Sum the terms up
+    ret := sum newTerms;
+
+    -- Store the image
+    freeOIModMapCache#(f, oiTerms) = ret;
+
+    ret
+)
+
+-- Apply a FreeOIModuleMap to a List of VectorInWidths
+FreeOIModuleMap List := (f, L) -> for i to #L - 1 list f L#i
+
+-- Apply a FreeOIModuleMap to a VectorInWidth
+FreeOIModuleMap VectorInWidth := (f, v) -> (
+    freeOIMod := freeOIModuleFromElement v;
+    if not source f === freeOIMod then error "element does not belong to the required FreeOIModule";
+
+    -- Handle the zero map and zero vector cases
+    if isZero f or isZero v then (
+        Width := widthOfElement v;
+        return 0_(getFreeModuleInWidth(f.targMod, Width))
+    );
+
+    oiTerms := getOITermsFromVector v;
+    applyFreeOIModuleMap(f, oiTerms)
+)
+
+-- Check if a FreeOIModuleMap is a graded map
+isHomogeneous FreeOIModuleMap := f -> (
+    if isZero f then return true;
+
+    for elt in f.genImages do (
+        degs := for t in terms elt list degree t;
+        if not #(set degs) == 1 then return false
+    );
+
+    -f.srcMod.degShifts === flatten apply(f.genImages, degree)
 )
 
 --------------------------------------------------------------------------------

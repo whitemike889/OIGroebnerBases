@@ -26,28 +26,39 @@ getInducedModuleMap(FreeOIModule, OIMap) := (F, f) -> (
     ret
 )
 
+-- Cache for storing InducedModuleMap images
+modMapCache = new MutableHashTable
+
 -- Apply an InducedModuleMap to a List of OI-terms
-applyModuleMap = method(TypicalValue => OITerm)
+applyModuleMap = method(TypicalValue => VectorInWidth)
 applyModuleMap(InducedModuleMap, List) := (f, oiTerms) -> (
     if #oiTerms == 0 then error "cannot apply InducedModuleMap to an empty list";
 
+    -- Return the image if it already exists
+    if modMapCache#?(f, oiTerms) then return modMapCache#(f, oiTerms);
+
     -- Generate the new terms
     algMap := getInducedAlgebraMap(f.freeOIMod.polyOIAlg, f.oiMap);
-    getVectorFromOITerms for i to #oiTerms - 1 list (
-        ringElement := (oiTerms#i).ringElement;
-        basisIndex := (oiTerms#i).basisIndex;
+    ret := getVectorFromOITerms for oiTerm in oiTerms list (
+        ringElement := oiTerm.ringElement;
+        basisIndex := oiTerm.basisIndex;
         newRingElement := algMap ringElement;
         newBasisIndex := f.img#basisIndex;
         makeOITerm(newRingElement, newBasisIndex)
-    )
+    );
+
+    -- Store the image
+    modMapCache#(f, oiTerms) = ret;
+
+    ret
 )
 
 -- Juxtaposition method for InducedModuleMap and VectorInWidth
 InducedModuleMap VectorInWidth := (f, v) -> (
     freeOIMod := f.freeOIMod;
     freeOIModFromVector := freeOIModuleFromElement v;
-    if not freeOIMod === freeOIModFromVector then error "the specified element does not belong to the required FreeOIModule";
-    if not source f === class v then error "the specified element does not belong to the source of the map";
+    if not freeOIMod === freeOIModFromVector then error "element does not belong to the required FreeOIModule";
+    if not source f === class v then error "element does not belong to the source of the map";
 
     -- Handle the zero vector
     if isZero v then (
