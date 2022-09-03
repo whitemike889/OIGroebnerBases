@@ -72,7 +72,7 @@ OITerm ? OITerm := (f, g) -> (
 )
 
 -- Comparison method for VectorInWidth
-VectorInWidth ? VectorInWidth := (f, g) -> leadOITerm f ? leadOITerm g
+VectorInWidth ? VectorInWidth := (f, g) -> if isZero f and isZero g then symbol == else if isZero f then symbol < else if isZero g then symbol > else leadOITerm f ? leadOITerm g
 
 makeBasisElement = method(TypicalValue => OITerm)
 makeBasisElement BasisIndex := b -> (
@@ -127,8 +127,7 @@ leadTerm VectorInWidth := f -> (
 
 leadCoefficient VectorInWidth := f -> (
     if isZero f then return 0_((freeOIModuleFromElement f).polyOIAlg.baseField);
-    loitf := leadOITerm f;
-    leadCoefficient loitf.ringElement
+    leadCoefficient leadOITerm f
 )
 
 leadCoefficient OITerm := f -> leadCoefficient f.ringElement
@@ -177,11 +176,11 @@ oiTermDiv(OITerm, OITerm) := (f, g) -> (
     );
 
     oiMaps := getOIMaps(Widthg, Widthf);
-    for oiMap in oiMaps do (
-        modMap := getInducedModuleMap(freeOIModf, oiMap);
+    for oiMap0 in oiMaps do (
+        modMap := getInducedModuleMap(freeOIModf, oiMap0);
         img := leadOITerm applyModuleMap(modMap, {g});
         if not img.basisIndex === f.basisIndex then continue;
-        if isZero(f.ringElement % img.ringElement) then return new HashTable from {quo => f.ringElement // img.ringElement, oiMap => oiMap}
+        if isZero(f.ringElement % img.ringElement) then return new HashTable from {quo => f.ringElement // img.ringElement, oiMap => oiMap0}
     );
 
     retZero

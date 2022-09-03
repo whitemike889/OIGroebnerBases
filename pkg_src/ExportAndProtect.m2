@@ -16,10 +16,12 @@ export {
     "makeMonic",
     "getInducedModuleMap",
     "makeFreeOIModuleMap",
+    "oiGB", "minimizeOIGB", "oiSyz", "isOIGB",
 
     -- Options
     "VariableOrder",
-    "DegreeShifts"
+    "DegreeShifts",
+    "MinimalOIGB"
 }
 
 scan({
@@ -29,6 +31,7 @@ scan({
     polyOIAlg, basisSym, genWidths, degShifts, monOrder, modules, Width, basisElements, basisElementPositions,
     freeOIMod, ringElement, oiMap, idx, basisIndex, quo,
     srcMod, targMod, genImages,
+    rem, triples,
 
     -- Options
     CombineLikeTerms

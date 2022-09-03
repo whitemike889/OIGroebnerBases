@@ -42,6 +42,8 @@ load "InducedModuleMap.m2"
 
 load "FreeOIModuleMap.m2"
 
+load "Algorithms.m2"
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- DOCUMENTATION ---------------------------------------------------------------
@@ -64,8 +66,23 @@ end
 
 -- Scratch work
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 1, x)
-F = makeFreeOIModule(P, e, {1,2})
-installBasisElements(F, 2)
-f = 3*x_(1,2)^2*x_(1,1)*e_(2,{2},1)+x_(1,1)*e_(2,{1},1)
-g = x_(1,1)*e_(2,{2},1)+e_(2,{1},1)
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)^3*e_(1,{1},1);
+F_2; b2 = x_(1,1)^2*e_(2,{1},1); b3 = x_(1,2)^2*e_(2,{2},1); b4 = x_(1,1)*x_(1,2)*e_(2,{2},1);
+B = oiGB({b1, b2, b3, b4}, Verbose => true)
+C = oiSyz(B, d, Verbose => true)
+isOIGB C
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; f = x_(1,1)^3*e_(1,{1}, 1);
+F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
+time B = oiGB({f, h}, Verbose => true)
+time C = oiSyz(B, d, Verbose => true)
+time isOIGB C
