@@ -80,24 +80,43 @@ makeBasisElement BasisIndex := b -> (
     new OITerm from {ringElement => one, basisIndex => b}
 )
 
+-- Cache for storing OI-terms computed from a VectorInWidth
+oiTermsCache = new MutableHashTable
+
 getOITermsFromVector = method(TypicalValue => List, Options => {CombineLikeTerms => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
     if isZero f then error "the zero element has no OI-terms";
+
+    -- Return the terms if they already exist
+    if oiTermsCache#?(f, opts.CombineLikeTerms) then return oiTermsCache#(f, opts.CombineLikeTerms);
+
     freeMod := class f;
     entryList := entries f;
-
-    if opts.CombineLikeTerms then reverse sort for i to #entryList - 1 list (
+    
+    ret := if opts.CombineLikeTerms then reverse sort for i to #entryList - 1 list (
         if isZero entryList#i then continue;
         makeOITerm(entryList#i, (freeMod.basisElements#i).basisIndex)
     ) else reverse sort flatten for i to #entryList - 1 list (
         if isZero entryList#i then continue;
         for term in terms entryList#i list makeOITerm(term, (freeMod.basisElements#i).basisIndex)
-    )
+    );
+
+    -- Store the terms
+    oiTermsCache#(f, opts.CombineLikeTerms) = ret;
+
+    ret
 )
+
+-- Cache for storing VectorInWidths computed from Lists of OI-terms
+vectorCache = new MutableHashTable
 
 getVectorFromOITerms = method(TypicalValue => VectorInWidth)
 getVectorFromOITerms List := L -> (
     if #L == 0 then error("getVectorFromOITerms expects a nonempty input");
+
+    -- Return the vector if it already exists
+    if vectorCache#?L then return vectorCache#L;
+
     Width := (L#0).basisIndex.oiMap.targWidth;
     freeOIMod := (L#0).basisIndex.freeOIMod;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
@@ -109,6 +128,9 @@ getVectorFromOITerms List := L -> (
         vect = vect + ringElement * freeMod_(freeMod.basisElementPositions#basisElement)
     );
     
+    -- Store the vector
+    vectorCache#L = vect;
+
     vect
 )
 
@@ -155,35 +177,42 @@ makeMonic = method(TypicalValue => VectorInWidth)
 makeMonic OITerm := f -> if isZero f then error "cannot make the zero element monic" else f // leadCoefficient f
 makeMonic VectorInWidth := f -> if isZero f then error "cannot make the zero element monic" else f // leadCoefficient f
 
+-- Cache for storing oiTermDiv results
+oiTermDivCache = new MutableHashTable
+
 -- Tries to divide f by g
 -- Returns a HashTable of the form {quo => RingElement, oiMap => OIMap}
 oiTermDiv = method(TypicalValue => HashTable)
 oiTermDiv(OITerm, OITerm) := (f, g) -> (
     if isZero g then error "cannot divide an OI-term by zero";
-    retZero := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
-    if isZero f then return retZero;
 
-    freeOIModf := f.basisIndex.freeOIMod;
-    freeOIModg := g.basisIndex.freeOIMod;
-    if not freeOIModf === freeOIModg then return retZero;
+    -- Return the result if it already exists
+    if oiTermDivCache#?(f, g) then return oiTermDivCache#(f, g);
 
-    Widthf := f.basisIndex.oiMap.targWidth;
-    Widthg := g.basisIndex.oiMap.targWidth;
-    if Widthf < Widthg then return retZero;
-    if Widthf === Widthg then (
-        if not f.basisIndex === g.basisIndex then return retZero;
-        if isZero(f.ringElement % g.ringElement) then return new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0} else return retZero
+    ret := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
+    if not isZero f then (
+        freeOIModf := f.basisIndex.freeOIMod;
+        freeOIModg := g.basisIndex.freeOIMod;
+        if freeOIModf === freeOIModg then (
+            Widthf := f.basisIndex.oiMap.targWidth;
+            Widthg := g.basisIndex.oiMap.targWidth;
+            if Widthf === Widthg then (
+                if f.basisIndex === g.basisIndex and isZero(f.ringElement % g.ringElement) then ret = new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0}
+            ) else (
+                oiMaps := getOIMaps(Widthg, Widthf);
+                for oiMap0 in oiMaps do (
+                    modMap := getInducedModuleMap(freeOIModf, oiMap0);
+                    img := leadOITerm applyModuleMap(modMap, {g});
+                    if img.basisIndex === f.basisIndex and isZero(f.ringElement % img.ringElement) then ( ret = new HashTable from {quo => f.ringElement // img.ringElement, oiMap => oiMap0}; break )
+                )
+            )
+        )
     );
 
-    oiMaps := getOIMaps(Widthg, Widthf);
-    for oiMap0 in oiMaps do (
-        modMap := getInducedModuleMap(freeOIModf, oiMap0);
-        img := leadOITerm applyModuleMap(modMap, {g});
-        if not img.basisIndex === f.basisIndex then continue;
-        if isZero(f.ringElement % img.ringElement) then return new HashTable from {quo => f.ringElement // img.ringElement, oiMap => oiMap0}
-    );
+    -- Store the result
+    oiTermDivCache#(f, g) = ret;
 
-    retZero
+    ret
 )
 
 -- Divide the lead terms of two VectorInWidths

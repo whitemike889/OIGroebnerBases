@@ -3,14 +3,12 @@ oiPolyDivCache = new MutableHashTable
 
 -- Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
 -- Returns a HashTable of the form {quo => VectorInWidth, rem => VectorInWidth, triples => List} where triples is a List describing how the quotient is constructed
-oiPolyDiv = method(TypicalValue => HashTable, Options => {Verbose => false})
-oiPolyDiv(VectorInWidth, List) := opts -> (f, L) -> (
+oiPolyDiv = method(TypicalValue => HashTable)
+oiPolyDiv(VectorInWidth, List) := (f, L) -> (
     if #L == 0 then error "expected a nonempty List";
 
     -- Return the result if it already exists
     if oiPolyDivCache#?(f, L) then return oiPolyDivCache#(f, L);
-
-    if opts.Verbose then print("Dividing "|net f|" by "|net L);
 
     if isZero f then return new HashTable from {quo => f, rem => f, triples => {}};
 
@@ -189,7 +187,7 @@ oiGB List := opts -> L -> (
                 print("Elements added total: "|toString addedTotal)
             );
 
-            rem := (oiPolyDiv(s, toList ret, Verbose => opts.Verbose)).rem;
+            rem := (oiPolyDiv(s, toList ret)).rem;
             if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Found nonzero remainder: "|net rem);
                 ret#retIndex = rem;
@@ -207,7 +205,10 @@ oiGB List := opts -> L -> (
 
     -- Minimize the basis
     local finalRet;
-    if opts.MinimalOIGB then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret;
+    if opts.MinimalOIGB then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\n";
+        finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose)
+    ) else finalRet = toList ret;
 
     -- Store the basis
     oiGBCache#(L, opts.Strategy, opts.MinimalOIGB) = finalRet;
@@ -262,7 +263,7 @@ isOIGB List := opts -> L -> (
 
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        rem := (oiPolyDiv(s, L, Verbose => opts.Verbose)).rem;
+        rem := (oiPolyDiv(s, L)).rem;
         if not isZero rem then (if opts.Verbose then print("Found nonzero remainder: "|net rem); return false) -- If L were a GB, then every element would have a unique remainder of zero
     );
     
@@ -281,9 +282,9 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
     if oiSyzCache#?(L, d, opts.MinimalOIGB) then return oiSyzCache#(L, d, opts.MinimalOIGB);
     
     freeOIMod := freeOIModuleFromElement L#0;
-    shifts := flatten for elt in L list -degree elt;
+    shifts := for elt in L list -degree elt;
     widths := for elt in L list widthOfElement elt;
-    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => shifts, MonomialOrder => L);
+    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => flatten shifts, MonomialOrder => L);
 
     ret := new MutableList;
     retIndex := 0;
@@ -304,7 +305,7 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
         freeMod := getFreeModuleInWidth(G, sWidth);
         thingToSubtract := 0_freeMod;
         if not isZero s then (
-            sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
+            sdiv := oiPolyDiv(s, L);
 
             -- Calculate the stuff to subtract off
             for triple in sdiv.triples do (
@@ -328,7 +329,10 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
 
     -- Minimize the basis
     local finalRet;
-    if opts.MinimalOIGB then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret; 
+    if opts.MinimalOIGB then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\n";
+        finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose)
+    ) else finalRet = toList ret; 
 
     -- Store the GB
     oiSyzCache#(L, d, opts.MinimalOIGB) = finalRet;

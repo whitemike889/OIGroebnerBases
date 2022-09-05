@@ -29,6 +29,7 @@ export {
     "FreeOIModule", "ModuleInWidth", "VectorInWidth",
     "InducedModuleMap",
     "FreeOIModuleMap",
+    "OIResolution",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -41,6 +42,7 @@ export {
     "getInducedModuleMap",
     "makeFreeOIModuleMap",
     "oiGB", "minimizeOIGB", "oiSyz", "isOIGB",
+    "oiRes", "isComplex",
 
     -- Options
     "VariableOrder",
@@ -102,12 +104,24 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
     ret
 )
 
+-- Cache for storing OI-map compositions
+compCache = new MutableHashTable
+
 -- Given OI-maps f and g, compute f(g)
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
     if not source f === target g then error "maps cannot be composed due to incompatible source and target";
+
+    -- Return the composition if it already exists
+    if compCache#?(f, g) then return compCache#(f, g);
+
     L := for i in source g list f g i;
-    new OIMap from {targWidth => f.targWidth, img => L}
+    ret := new OIMap from {targWidth => f.targWidth, img => L};
+
+    -- Store the composition
+    compCache#(f, g) = ret;
+
+    ret
 )
 
 -- Shorthand composition
@@ -413,24 +427,43 @@ makeBasisElement BasisIndex := b -> (
     new OITerm from {ringElement => one, basisIndex => b}
 )
 
+-- Cache for storing OI-terms computed from a VectorInWidth
+oiTermsCache = new MutableHashTable
+
 getOITermsFromVector = method(TypicalValue => List, Options => {CombineLikeTerms => false})
 getOITermsFromVector VectorInWidth := opts -> f -> (
     if isZero f then error "the zero element has no OI-terms";
+
+    -- Return the terms if they already exist
+    if oiTermsCache#?(f, opts.CombineLikeTerms) then return oiTermsCache#(f, opts.CombineLikeTerms);
+
     freeMod := class f;
     entryList := entries f;
-
-    if opts.CombineLikeTerms then reverse sort for i to #entryList - 1 list (
+    
+    ret := if opts.CombineLikeTerms then reverse sort for i to #entryList - 1 list (
         if isZero entryList#i then continue;
         makeOITerm(entryList#i, (freeMod.basisElements#i).basisIndex)
     ) else reverse sort flatten for i to #entryList - 1 list (
         if isZero entryList#i then continue;
         for term in terms entryList#i list makeOITerm(term, (freeMod.basisElements#i).basisIndex)
-    )
+    );
+
+    -- Store the terms
+    oiTermsCache#(f, opts.CombineLikeTerms) = ret;
+
+    ret
 )
+
+-- Cache for storing VectorInWidths computed from Lists of OI-terms
+vectorCache = new MutableHashTable
 
 getVectorFromOITerms = method(TypicalValue => VectorInWidth)
 getVectorFromOITerms List := L -> (
     if #L == 0 then error("getVectorFromOITerms expects a nonempty input");
+
+    -- Return the vector if it already exists
+    if vectorCache#?L then return vectorCache#L;
+
     Width := (L#0).basisIndex.oiMap.targWidth;
     freeOIMod := (L#0).basisIndex.freeOIMod;
     freeMod := getFreeModuleInWidth(freeOIMod, Width);
@@ -442,6 +475,9 @@ getVectorFromOITerms List := L -> (
         vect = vect + ringElement * freeMod_(freeMod.basisElementPositions#basisElement)
     );
     
+    -- Store the vector
+    vectorCache#L = vect;
+
     vect
 )
 
@@ -488,35 +524,42 @@ makeMonic = method(TypicalValue => VectorInWidth)
 makeMonic OITerm := f -> if isZero f then error "cannot make the zero element monic" else f // leadCoefficient f
 makeMonic VectorInWidth := f -> if isZero f then error "cannot make the zero element monic" else f // leadCoefficient f
 
+-- Cache for storing oiTermDiv results
+oiTermDivCache = new MutableHashTable
+
 -- Tries to divide f by g
 -- Returns a HashTable of the form {quo => RingElement, oiMap => OIMap}
 oiTermDiv = method(TypicalValue => HashTable)
 oiTermDiv(OITerm, OITerm) := (f, g) -> (
     if isZero g then error "cannot divide an OI-term by zero";
-    retZero := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
-    if isZero f then return retZero;
 
-    freeOIModf := f.basisIndex.freeOIMod;
-    freeOIModg := g.basisIndex.freeOIMod;
-    if not freeOIModf === freeOIModg then return retZero;
+    -- Return the result if it already exists
+    if oiTermDivCache#?(f, g) then return oiTermDivCache#(f, g);
 
-    Widthf := f.basisIndex.oiMap.targWidth;
-    Widthg := g.basisIndex.oiMap.targWidth;
-    if Widthf < Widthg then return retZero;
-    if Widthf === Widthg then (
-        if not f.basisIndex === g.basisIndex then return retZero;
-        if isZero(f.ringElement % g.ringElement) then return new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0} else return retZero
+    ret := new HashTable from {quo => 0_(class f.ringElement), oiMap => null};
+    if not isZero f then (
+        freeOIModf := f.basisIndex.freeOIMod;
+        freeOIModg := g.basisIndex.freeOIMod;
+        if freeOIModf === freeOIModg then (
+            Widthf := f.basisIndex.oiMap.targWidth;
+            Widthg := g.basisIndex.oiMap.targWidth;
+            if Widthf === Widthg then (
+                if f.basisIndex === g.basisIndex and isZero(f.ringElement % g.ringElement) then ret = new HashTable from {quo => f.ringElement // g.ringElement, oiMap => (getOIMaps(Widthg, Widthf))#0}
+            ) else (
+                oiMaps := getOIMaps(Widthg, Widthf);
+                for oiMap0 in oiMaps do (
+                    modMap := getInducedModuleMap(freeOIModf, oiMap0);
+                    img := leadOITerm applyModuleMap(modMap, {g});
+                    if img.basisIndex === f.basisIndex and isZero(f.ringElement % img.ringElement) then ( ret = new HashTable from {quo => f.ringElement // img.ringElement, oiMap => oiMap0}; break )
+                )
+            )
+        )
     );
 
-    oiMaps := getOIMaps(Widthg, Widthf);
-    for oiMap0 in oiMaps do (
-        modMap := getInducedModuleMap(freeOIModf, oiMap0);
-        img := leadOITerm applyModuleMap(modMap, {g});
-        if not img.basisIndex === f.basisIndex then continue;
-        if isZero(f.ringElement % img.ringElement) then return new HashTable from {quo => f.ringElement // img.ringElement, oiMap => oiMap0}
-    );
+    -- Store the result
+    oiTermDivCache#(f, g) = ret;
 
-    retZero
+    ret
 )
 
 -- Divide the lead terms of two VectorInWidths
@@ -693,14 +736,12 @@ oiPolyDivCache = new MutableHashTable
 
 -- Compute a remainder of a VectorInWidth modulo a List of VectorInWidths
 -- Returns a HashTable of the form {quo => VectorInWidth, rem => VectorInWidth, triples => List} where triples is a List describing how the quotient is constructed
-oiPolyDiv = method(TypicalValue => HashTable, Options => {Verbose => false})
-oiPolyDiv(VectorInWidth, List) := opts -> (f, L) -> (
+oiPolyDiv = method(TypicalValue => HashTable)
+oiPolyDiv(VectorInWidth, List) := (f, L) -> (
     if #L == 0 then error "expected a nonempty List";
 
     -- Return the result if it already exists
     if oiPolyDivCache#?(f, L) then return oiPolyDivCache#(f, L);
-
-    if opts.Verbose then print("Dividing "|net f|" by "|net L);
 
     if isZero f then return new HashTable from {quo => f, rem => f, triples => {}};
 
@@ -879,7 +920,7 @@ oiGB List := opts -> L -> (
                 print("Elements added total: "|toString addedTotal)
             );
 
-            rem := (oiPolyDiv(s, toList ret, Verbose => opts.Verbose)).rem;
+            rem := (oiPolyDiv(s, toList ret)).rem;
             if not isZero rem and not member(rem, toList ret) then (
                 if opts.Verbose then print("Found nonzero remainder: "|net rem);
                 ret#retIndex = rem;
@@ -897,7 +938,10 @@ oiGB List := opts -> L -> (
 
     -- Minimize the basis
     local finalRet;
-    if opts.MinimalOIGB then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret;
+    if opts.MinimalOIGB then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\n";
+        finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose)
+    ) else finalRet = toList ret;
 
     -- Store the basis
     oiGBCache#(L, opts.Strategy, opts.MinimalOIGB) = finalRet;
@@ -952,7 +996,7 @@ isOIGB List := opts -> L -> (
 
         encountered#encIndex = s;
         encIndex = encIndex + 1;
-        rem := (oiPolyDiv(s, L, Verbose => opts.Verbose)).rem;
+        rem := (oiPolyDiv(s, L)).rem;
         if not isZero rem then (if opts.Verbose then print("Found nonzero remainder: "|net rem); return false) -- If L were a GB, then every element would have a unique remainder of zero
     );
     
@@ -971,9 +1015,9 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
     if oiSyzCache#?(L, d, opts.MinimalOIGB) then return oiSyzCache#(L, d, opts.MinimalOIGB);
     
     freeOIMod := freeOIModuleFromElement L#0;
-    shifts := flatten for elt in L list -degree elt;
+    shifts := for elt in L list -degree elt;
     widths := for elt in L list widthOfElement elt;
-    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => shifts, MonomialOrder => L);
+    G := makeFreeOIModule(freeOIMod.polyOIAlg, d, widths, DegreeShifts => flatten shifts, MonomialOrder => L);
 
     ret := new MutableList;
     retIndex := 0;
@@ -994,7 +1038,7 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
         freeMod := getFreeModuleInWidth(G, sWidth);
         thingToSubtract := 0_freeMod;
         if not isZero s then (
-            sdiv := oiPolyDiv(s, L, Verbose => opts.Verbose);
+            sdiv := oiPolyDiv(s, L);
 
             -- Calculate the stuff to subtract off
             for triple in sdiv.triples do (
@@ -1018,12 +1062,254 @@ oiSyz(List, Symbol) := opts -> (L, d) -> (
 
     -- Minimize the basis
     local finalRet;
-    if opts.MinimalOIGB then finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose) else finalRet = toList ret; 
+    if opts.MinimalOIGB then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\n";
+        finalRet = minimizeOIGB(toList ret, Verbose => opts.Verbose)
+    ) else finalRet = toList ret; 
 
     -- Store the GB
     oiSyzCache#(L, d, opts.MinimalOIGB) = finalRet;
 
     finalRet
+)
+
+-- Cache for storing OI-resolutions computed with oiRes
+oiResCache = new MutableHashTable
+
+-- Should be of the form {dd => List, modules => List}
+OIResolution = new Type of HashTable
+
+net OIResolution := C -> (
+    n := "0: "|toString C.modules#0;
+    for i from 1 to #C.modules - 1 do n = n || toString i | ": "|toString C.modules#i;
+    n
+)
+
+describe OIResolution := C -> (
+    n := "0: Module: "|net C.modules#0||"Differential: "|net C.dd#0;
+    for i from 1 to #C.modules - 1 do n = n || toString i | ": Module: "|net C.modules#i||"Differential: "|net C.dd#i;
+    n
+)
+
+OIResolution _ ZZ := (C, n) -> C.modules#n
+
+-- Compute an OIResolution of length n for the OI-module generated by the elements of L
+oiRes = method(TypicalValue => OIResolution, Options => {FastNonminimal => false, Verbose => false, MinimalOIGB => true})
+oiRes(List, ZZ) := opts -> (L, n) -> (
+    if n < 0 then error "expected a nonnegative integer";
+    if #L == 0 then error "expected a nonempty List";
+
+    -- Return the resolution if it already exists
+    if oiResCache#?(L, n, opts.FastNonminimal, opts.MinimalOIGB) then return oiResCache#(L, n, opts.FastNonminimal, opts.MinimalOIGB);
+
+    ddMut := new MutableList;
+    modulesMut := new MutableList;
+
+    -- Make the initial resolution
+    initialFreeOIMod := freeOIModuleFromElement L#0;
+    e := initialFreeOIMod.basisSym;
+
+    if opts.Verbose then print "Computing an OI-Groebner basis...";
+    oigb := oiGB(L, Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
+    currentGB := oigb;
+    currentSymbol := getSymbol concatenate(e, "0");
+    count := 0;
+
+    if n > 0 then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\nComputing syzygies...";
+        for i to n - 1 do (
+            syzGens := oiSyz(currentGB, currentSymbol, Verbose => opts.Verbose, MinimalOIGB => opts.MinimalOIGB);
+
+            if #syzGens == 0 then break;
+
+            targFreeOIMod := freeOIModuleFromElement currentGB#0;
+            srcFreeOIMod := freeOIModuleFromElement syzGens#0;
+
+            modulesMut#i = srcFreeOIMod;
+            ddMut#i = makeFreeOIModuleMap(targFreeOIMod, srcFreeOIMod, getMonomialOrder srcFreeOIMod);
+
+            count = i + 1;
+            currentGB = syzGens;
+            currentSymbol = getSymbol concatenate(e, toString count)
+        )
+    );
+
+    -- Append the last term in the sequence
+    shifts := for elt in currentGB list -degree elt;
+    widths := for elt in currentGB list widthOfElement elt;
+    modulesMut#count = makeFreeOIModule(initialFreeOIMod.polyOIAlg, currentSymbol, widths, DegreeShifts => flatten shifts, MonomialOrder => currentGB);
+    targFreeOIMod := if count == 0 then initialFreeOIMod else modulesMut#(count - 1);
+    ddMut#count = makeFreeOIModuleMap(targFreeOIMod, modulesMut#count, currentGB);
+
+    -- Cap the sequence with zero
+    if count < n then (
+        currentSymbol = getSymbol concatenate(e, toString(count + 1));
+        modulesMut#(count + 1) = makeFreeOIModule(initialFreeOIMod.polyOIAlg, currentSymbol, {});
+        ddMut#(count + 1) = makeFreeOIModuleMap(modulesMut#count, modulesMut#(count + 1), {})
+    );
+
+    -- Minimize the resolution
+    if not opts.FastNonminimal and #ddMut > 1 and isHomogeneous ddMut#0 and not isZero ddMut#1 then (
+        if opts.Verbose then print "----------------------------------------\n----------------------------------------\nMinimizing resolution...";
+        done := false;
+        while not done do (
+            done = true;
+
+            -- Look for units on identity basis elements
+            unitFound := false;
+            local data;
+            for i from 1 to #ddMut - 1 do (
+                ddMap := ddMut#i;
+                if isZero ddMap then continue; -- Skip any zero maps
+                srcMod := source ddMap;
+                targMod := target ddMap;
+                for j to #ddMap.genImages - 1 do (
+                    if isZero ddMap.genImages#j then continue;
+                    oiTerms := getOITermsFromVector(ddMap.genImages#j, CombineLikeTerms => true);
+                    for term in oiTerms do (
+                        b := term.basisIndex;
+                        if b.oiMap.img === toList(1..b.oiMap.targWidth) and isUnit term.ringElement then (
+                            unitFound = true;
+                            done = false;
+                            data = {i, j, term};
+                            if opts.Verbose then print("Unit found on term: "|net term);
+                            break
+                        );
+                        if unitFound then break
+                    );
+                    if unitFound then break
+                );
+                if unitFound then break
+            );
+
+            -- Prune the sequence
+            if unitFound then (
+                term := data#2;
+                targBasisPos := term.basisIndex.idx - 1;
+                srcBasisPos := data#1;
+                ddMap := ddMut#(data#0);
+                srcMod := source ddMap;
+                targMod := target ddMap;
+
+                if opts.Verbose then print "Pruning...";
+
+                newSrcWidths := remove(srcMod.genWidths, srcBasisPos);
+                newSrcShifts := remove(srcMod.degShifts, srcBasisPos);
+                newTargWidths := remove(targMod.genWidths, targBasisPos);
+                newTargShifts := remove(targMod.degShifts, targBasisPos);
+
+                -- Make the new modules
+                newSrcMod := makeFreeOIModule(srcMod.polyOIAlg, srcMod.basisSym, newSrcWidths, DegreeShifts => newSrcShifts);
+                newTargMod := makeFreeOIModule(targMod.polyOIAlg, targMod.basisSym, newTargWidths, DegreeShifts => newTargShifts);
+
+                -- Compute the new differential
+                newGenImages := new List;
+                if not (isZero newSrcMod or isZero newTargMod) then (
+                    targBasisOIMap := makeOIMap(targMod.genWidths#targBasisPos, toList(1..targMod.genWidths#targBasisPos));
+                    srcBasisOIMap := makeOIMap(srcMod.genWidths#srcBasisPos, toList(1..srcMod.genWidths#srcBasisPos));
+                    newGenImages = for i to #srcMod.genWidths - 1 list (
+                        if i == srcBasisPos then continue;
+                        stuff := 0_(getFreeModuleInWidth(srcMod, srcMod.genWidths#i));
+                        oiMaps := getOIMaps(targMod.genWidths#targBasisPos, srcMod.genWidths#i);
+
+                        -- Calculate the stuff to subtract off
+                        if #oiMaps > 0 and not isZero ddMap.genImages#i then (
+                            oiTerms := getOITermsFromVector(ddMap.genImages#i, CombineLikeTerms => true);
+                            for term in oiTerms do (
+                                b := term.basisIndex;
+                                if not b.idx == targBasisPos + 1 then continue;
+
+                                local oiMap;
+                                for oimap in oiMaps do if b.oiMap === composeOIMaps(oimap, targBasisOIMap) then ( oiMap = oimap; break );
+
+                                modMap := getInducedModuleMap(srcMod, oiMap);
+                                basisElt := getVectorFromOITerms {makeBasisElement makeBasisIndex(srcMod, srcBasisOIMap, srcBasisPos + 1)};
+                                stuff = stuff + term.ringElement * modMap basisElt
+                            )
+                        );
+
+                        -- Calculate the new image
+                        basisElt := getVectorFromOITerms {makeBasisElement makeBasisIndex(srcMod, makeOIMap(srcMod.genWidths#i, toList(1..srcMod.genWidths#i)), i + 1)};
+                        newGenImage0 := ddMap(basisElt - lift(1 // term.ringElement, srcMod.polyOIAlg.baseField) * stuff);
+                        newGenImage := 0_(getFreeModuleInWidth(newTargMod, widthOfElement newGenImage0));
+                        if not isZero newGenImage0 then (
+                            newOITerms := getOITermsFromVector(newGenImage0, CombineLikeTerms => true);
+                            for newTerm in newOITerms do (
+                                idx := newTerm.basisIndex.idx;
+                                if idx > targBasisPos + 1 then idx = idx - 1; -- Relabel
+                                newGenImage = newGenImage + getVectorFromOITerms {makeOITerm(newTerm.ringElement, makeBasisIndex(newTargMod, newTerm.basisIndex.oiMap, idx))}
+                            )
+                        );
+
+                        newGenImage
+                    )
+                );
+
+                ddMut#(data#0) = makeFreeOIModuleMap(newTargMod, newSrcMod, newGenImages);
+                modulesMut#(data#0) = newSrcMod;
+                modulesMut#(data#0 - 1) = newTargMod;
+
+                -- Adjust the adjactent differentials
+                -- Below map
+                ddMap = ddMut#(data#0 - 1);
+                ddMut#(data#0 - 1) = makeFreeOIModuleMap(target ddMap, newTargMod, remove(ddMap.genImages, targBasisPos));
+
+                -- Above map
+                if data#0 < #ddMut - 1 then (
+                    newGenImages = new MutableList;
+                    ddMap = ddMut#(1 + data#0);
+                    srcMod = source ddMap;
+                    targMod = target ddMap;
+
+                    if not (isZero srcMod or isZero targMod) then (
+                        for i to #ddMap.genImages - 1 do (
+                            if isZero ddMap.genImages#i then newGenImages#i = ddMap.genImages#i else (
+                                oiTerms := getOITermsFromVector ddMap.genImages#i;
+                                newTerms := for term in oiTerms list (
+                                    idx := term.basisIndex.idx;
+                                    if idx == srcBasisPos + 1 then continue; -- Projection
+                                    if idx > srcBasisPos + 1 then idx = idx - 1; -- Relabel
+                                    makeOITerm(term.ringElement, makeBasisIndex(newSrcMod, term.basisIndex.oiMap, idx))
+                                );
+
+                                newGenImages#i = getVectorFromOITerms newTerms
+                            )
+                        )
+                    );
+
+                    ddMut#(1 + data#0) = makeFreeOIModuleMap(newSrcMod, srcMod, new List from newGenImages)
+                )
+            )
+        )
+    );
+
+    ret := new OIResolution from {dd => new List from ddMut, modules => new List from modulesMut};
+
+    -- Store the resolution
+    oiResCache#(L, n, opts.FastNonminimal, opts.MinimalOIGB) = ret;
+
+    ret
+)
+
+-- Verify that an OIResolution is a complex
+isComplex = method(TypicalValue => Boolean)
+isComplex OIResolution := C -> (
+    if #C.dd < 2 then error "expected a sequence with at least two maps";
+
+    -- Check if the maps compose to zero
+    for i from 1 to #C.dd - 1 do (
+        modMap0 := C.dd#(i - 1);
+        modMap1 := C.dd#i;
+        if isZero modMap0 or isZero modMap1 then continue;
+        srcMod := source modMap1;
+        basisElts := for i to #srcMod.genWidths - 1 list makeBasisElement makeBasisIndex(srcMod, makeOIMap(srcMod.genWidths#i, toList(1..srcMod.genWidths#i)), i + 1);
+        for basisElt in basisElts do (
+            result := modMap0 modMap1 getVectorFromOITerms {basisElt};
+            if not isZero result then return false
+        )
+    );
+
+    true
 )
 
 --------------------------------------------------------------------------------
@@ -1048,13 +1334,6 @@ end
 
 -- Scratch work
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ, 1, x)
-F = makeFreeOIModule(P, e, {1,2})
-installBasisElements(F, 2)
-f = 3*x_(1,2)^2*x_(1,1)*e_(2,{2},1)+x_(1,1)*e_(2,{1},1)
-g = x_(1,1)*e_(2,{2},1)+e_(2,{1},1)
-
-load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,1,x);
 F = makeFreeOIModule(P, e, {1});
 installBasisElements(F, 1);
@@ -1064,3 +1343,42 @@ F_2; b2 = x_(1,1)^2*e_(2,{1},1); b3 = x_(1,2)^2*e_(2,{2},1); b4 = x_(1,1)*x_(1,2
 B = oiGB({b1, b2, b3, b4}, Verbose => true)
 C = oiSyz(B, d, Verbose => true)
 isOIGB C
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; f = x_(1,1)^3*e_(1,{1}, 1);
+F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
+time B = oiGB({f, h}, Verbose => true)
+time C = oiSyz(B, d, Verbose => true)
+time isOIGB C
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1,1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(1,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(1,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+time C = oiRes({b1,b2,b3}, 0, Verbose => true)
+
+restart
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+installBasisElements(F, 3);
+installBasisElements(F, 4);
+
+-- Res example 1
+F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+F_2; b3 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1, b2, b3}, 1, Verbose => true)
+
+-- Res example 2
+F_1; b1 = x_(1,1)*e_(1,{1},1);
+F_2; b2 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1,b2}, 0, Verbose => true)

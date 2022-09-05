@@ -5,6 +5,7 @@ export {
     "FreeOIModule", "ModuleInWidth", "VectorInWidth",
     "InducedModuleMap",
     "FreeOIModuleMap",
+    "OIResolution",
 
     -- Keys
     "ColUpRowUp", "ColUpRowDown", "ColDownRowUp", "ColDownRowDown", "RowUpColUp", "RowUpColDown", "RowDownColUp", "RowDownColDown",
@@ -17,6 +18,7 @@ export {
     "getInducedModuleMap",
     "makeFreeOIModuleMap",
     "oiGB", "minimizeOIGB", "oiSyz", "isOIGB",
+    "oiRes", "isComplex",
 
     -- Options
     "VariableOrder",

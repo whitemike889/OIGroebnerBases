@@ -33,12 +33,24 @@ getOIMaps(ZZ, ZZ) := (m, n) -> (
     ret
 )
 
+-- Cache for storing OI-map compositions
+compCache = new MutableHashTable
+
 -- Given OI-maps f and g, compute f(g)
 composeOIMaps = method(TypicalValue => OIMap)
 composeOIMaps(OIMap, OIMap) := (f, g) -> (
     if not source f === target g then error "maps cannot be composed due to incompatible source and target";
+
+    -- Return the composition if it already exists
+    if compCache#?(f, g) then return compCache#(f, g);
+
     L := for i in source g list f g i;
-    new OIMap from {targWidth => f.targWidth, img => L}
+    ret := new OIMap from {targWidth => f.targWidth, img => L};
+
+    -- Store the composition
+    compCache#(f, g) = ret;
+
+    ret
 )
 
 -- Shorthand composition

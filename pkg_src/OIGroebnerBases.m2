@@ -44,6 +44,8 @@ load "FreeOIModuleMap.m2"
 
 load "Algorithms.m2"
 
+load "OIResolution.m2"
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- DOCUMENTATION ---------------------------------------------------------------
@@ -86,3 +88,48 @@ F_2; h = x_(1,2)^2*e_(2, {2}, 1) + x_(1,1)*x_(1,2)*e_(2, {2}, 1);
 time B = oiGB({f, h}, Verbose => true)
 time C = oiSyz(B, d, Verbose => true)
 time isOIGB C
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1,1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(1,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(1,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+time C = oiRes({b1,b2,b3}, 3, Verbose => true)
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,2,x);
+F = makeFreeOIModule(P, e, {1,1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(2,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+time C = oiRes({b1,b2,b3}, 3, Verbose => true)
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,2,x, VariableOrder => ColUpRowDown);
+F = makeFreeOIModule(P, e, {1,1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(2,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+time C = oiRes({b1,b2,b3}, 3, Verbose => true)
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,1,x);
+F = makeFreeOIModule(P, e, {1});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+installBasisElements(F, 3);
+installBasisElements(F, 4);
+
+-- Res example 1
+F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
+F_2; b3 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1, b2, b3}, 1, Verbose => true)
+
+-- Res example 2
+F_1; b1 = x_(1,1)*e_(1,{1},1);
+F_2; b2 = x_(1,2)*e_(2,{1},1);
+C = oiRes({b1,b2}, 0, Verbose => true)
