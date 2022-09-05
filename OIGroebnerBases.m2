@@ -1150,7 +1150,7 @@ oiRes(List, ZZ) := opts -> (L, n) -> (
     );
 
     -- Minimize the resolution
-    if not opts.FastNonminimal and #ddMut > 1 and isHomogeneous ddMut#0 and not isZero ddMut#1 then (
+    if not opts.FastNonminimal and #ddMut > 1 and not isZero ddMut#1 then (
         if opts.Verbose then print "----------------------------------------\n----------------------------------------\nMinimizing resolution...";
         done := false;
         while not done do (
