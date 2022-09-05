@@ -286,7 +286,7 @@ net VectorInWidth := f -> (
     if #oiTerms == 1 then return net oiTerms#0;
     
     str := "";
-    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + "; -- TODO: Make negatives look better
+    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + "; -- WISHLIST: Make negatives look better
     str = str|net oiTerms#-1;
     str
 )
@@ -782,7 +782,8 @@ oiPolyDiv(VectorInWidth, List) := (f, L) -> (
     ret
 )
 
--- TODO: Add user-exposed division algorithm
+-- User-exposed division algorithm
+VectorInWidth // List := (f, L) -> {(oiPolyDiv(f, L)).quo, (oiPolyDiv(f, L)).rem}
 
 -- Cache for storing S-polynomials
 spolyCache = new MutableHashTable
@@ -1362,9 +1363,26 @@ installBasisElements(F, 1);
 installBasisElements(F, 2);
 F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(1,1)*e_(1,{1},2);
 F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(1,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
-time C = oiRes({b1,b2,b3}, 0, Verbose => true)
+time C = oiRes({b1,b2,b3}, 3, Verbose => true)
 
-restart
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,2,x);
+F = makeFreeOIModule(P, e, {1,1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(2,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+time C = oiRes({b1,b2,b3}, 3, Verbose => true)
+
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,2,x, VariableOrder => ColUpRowDown);
+F = makeFreeOIModule(P, e, {1,1,2});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(2,1)*e_(1,{1},2);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+time C = oiRes({b1,b2,b3}, 3, Verbose => true)
+
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,1,x);
 F = makeFreeOIModule(P, e, {1});

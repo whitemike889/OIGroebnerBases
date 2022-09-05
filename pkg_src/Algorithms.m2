@@ -49,7 +49,8 @@ oiPolyDiv(VectorInWidth, List) := (f, L) -> (
     ret
 )
 
--- TODO: Add user-exposed division algorithm
+-- User-exposed division algorithm
+VectorInWidth // List := (f, L) -> {(oiPolyDiv(f, L)).quo, (oiPolyDiv(f, L)).rem}
 
 -- Cache for storing S-polynomials
 spolyCache = new MutableHashTable

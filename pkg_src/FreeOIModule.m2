@@ -68,7 +68,7 @@ net VectorInWidth := f -> (
     if #oiTerms == 1 then return net oiTerms#0;
     
     str := "";
-    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + "; -- TODO: Make negatives look better
+    for i to #oiTerms - 2 do str = str|net oiTerms#i|" + "; -- WISHLIST: Make negatives look better
     str = str|net oiTerms#-1;
     str
 )
