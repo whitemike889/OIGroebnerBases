@@ -90,7 +90,7 @@ oiPairsCache = new MutableHashTable
 -- Compute the critical pairs for a List L
 -- Returns a List of Lists of the form {VectorInWidth, VectorInWidth, OIMap, OIMap, ZZ, ZZ}
 -- The first two VectorInWidths are the actual OI-pair. Then the OI-maps used to make them, and the indices of the elements of L used
-oiPairs = method(TypicalValue => List, Options => {Verbose => false})
+oiPairs = method(TypicalValue => List, Options => {FilterMaxPairs => false, Verbose => false})
 oiPairs List := opts -> L -> (
     if #L == 0 then error "Expected a nonempty List";
 
@@ -116,6 +116,7 @@ oiPairs List := opts -> L -> (
             searchMin := max(Widthf, Widthg);
             searchMax := Widthf + Widthg;
             for i to searchMax - searchMin do (
+                if opts.FilterMaxPairs and i == 0 then continue; -- S-pairs with i = 0 will have a remainder of zero
                 k := searchMax - i;
                 oiMapsFromf := getOIMaps(Widthf, k);
 
@@ -125,9 +126,9 @@ oiPairs List := opts -> L -> (
 
                     -- Now add back in the i-element subsets of oiMapFromf.img and make the pairs
                     for subset in subsets(oiMapFromf.img, i) do (
+                        
                         oiMapFromg := makeOIMap(k, sort toList(base + set subset));
                         if not composeOIMaps(oiMapFromf, loitf.basisIndex.oiMap) === composeOIMaps(oiMapFromg, loitg.basisIndex.oiMap) then continue; -- These will have lcm zero
-
                         if opts.Verbose then print("Found OI-maps "|net oiMapFromf|" and "|net oiMapFromg);
 
                         modMapFromf := getInducedModuleMap(freeOIModuleFromElement f, oiMapFromf);
@@ -174,7 +175,7 @@ oiGB List := opts -> L -> (
         retTmp := toList ret;
         addedThisPhase := 0;
 
-        oipairs := oiPairs(retTmp, Verbose => opts.Verbose);
+        oipairs := oiPairs(retTmp, Verbose => opts.Verbose, FilterMaxPairs => true);
         for i to #oipairs - 1 do (
             s := spoly(oipairs#i#0, oipairs#i#1);
 
@@ -252,7 +253,7 @@ isOIGB List := opts -> L -> (
 
     encountered := new MutableList;
     encIndex := 0;
-    oipairs := oiPairs(L, Verbose => opts.Verbose);
+    oipairs := oiPairs(L, Verbose => opts.Verbose, FilterMaxPairs => true);
     for i to #oipairs - 1 do (
         if opts.Verbose then (
             print("On critical pair "|toString(i + 1)|" out of "|toString(#oipairs));

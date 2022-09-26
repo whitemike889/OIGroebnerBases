@@ -36,5 +36,5 @@ scan({
     rem, triples,
 
     -- Options
-    CombineLikeTerms
+    CombineLikeTerms, FilterMaxPairs
 }, protect)

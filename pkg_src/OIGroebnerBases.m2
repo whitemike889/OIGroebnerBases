@@ -78,6 +78,7 @@ B = oiGB({b1, b2, b3, b4}, Verbose => true)
 C = oiSyz(B, d, Verbose => true)
 isOIGB C
 
+restart
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,1,x);
 F = makeFreeOIModule(P, e, {1});
@@ -98,23 +99,37 @@ F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(1,1)*e_(1,{1},2);
 F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(1,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
 time C = oiRes({b1,b2,b3}, 3, Verbose => true)
 
+restart
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,2,x);
 F = makeFreeOIModule(P, e, {1,1,2});
 installBasisElements(F, 1);
 installBasisElements(F, 2);
 F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(2,1)*e_(1,{1},2);
-F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
+F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = x_(2,1)*e_(2,{2},1);
 time C = oiRes({b1,b2,b3}, 3, Verbose => true)
 
+-- GB Example
+restart
 load "OIGroebnerBases.m2"
-P = makePolynomialOIAlgebra(QQ,2,x, VariableOrder => ColUpRowDown);
-F = makeFreeOIModule(P, e, {1,1,2});
+P = makePolynomialOIAlgebra(QQ,2,x);
+F = makeFreeOIModule(P, e, {0});
 installBasisElements(F, 1);
 installBasisElements(F, 2);
-F_1; b1 = x_(1,1)*e_(1,{1},1)+x_(2,1)*e_(1,{1},2);
-F_2; b2 = x_(1,1)*e_(2,{2},2) + x_(2,2)*e_(2,{1,2},3); b3 = e_(2,{2},1);
-time C = oiRes({b1,b2,b3}, 3, Verbose => true)
+F_1; b1 = x_(1,1)*e_(1,{},1) + x_(2,1)^2*e_(1,{},1);
+F_2; b2 = (x_(1,2)*x_(1,1)+x_(2,2))*e_(2,{},1);
+time B = oiGB({b1,b2}, Verbose => true, Strategy => 2)
+
+-- Res Example
+restart
+load "OIGroebnerBases.m2"
+P = makePolynomialOIAlgebra(QQ,2,x);
+F = makeFreeOIModule(P, e, {0});
+installBasisElements(F, 1);
+installBasisElements(F, 2);
+F_1; b1 = x_(1,1)*e_(1,{},1);
+F_2; b2 = x_(2,1)*e_(2,{},1); b3 = x_(2,2)*e_(2,{},1);
+time C = oiRes({b1}, 8, Verbose => true)
 
 load "OIGroebnerBases.m2"
 P = makePolynomialOIAlgebra(QQ,1,x);
@@ -125,8 +140,8 @@ installBasisElements(F, 3);
 installBasisElements(F, 4);
 
 -- Res example 1
-F_1; b1 = x_(1,1)*e_(1,{1},1); b2 = x_(1,1)^2*e_(1,{1},1);
-F_2; b3 = x_(1,2)*e_(2,{1},1);
+F_1; b1 = x_(1,1)*e_(1,{1},1);
+F_2; b2 = x_(1,1)*e_(2,{2},1); b3 = x_(1,2)*e_(2,{1},1);
 C = oiRes({b1, b2, b3}, 1, Verbose => true)
 
 -- Res example 2
